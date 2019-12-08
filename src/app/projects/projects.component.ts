@@ -10,6 +10,8 @@ import { isDevMode } from '@angular/core';
 import { UsersService } from '../services/users.service';
 import { UploadImageService } from '../services/upload-image.service';
 import { Subscription } from 'rxjs/Subscription';
+import { AppConfigService } from '../services/app-config.service';
+
 @Component({
   selector: 'projects',
   templateUrl: './projects.component.html',
@@ -43,6 +45,9 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   userImageHasBeenUploaded: boolean;
   myAvailabilityCount: number;
   subscription: Subscription;
+
+  storageBucket: string;
+
   constructor(
     private projectService: ProjectService,
     private router: Router,
@@ -51,7 +56,8 @@ export class ProjectsComponent implements OnInit, OnDestroy {
     private element: ElementRef,
     private departmentService: DepartmentService,
     private usersService: UsersService,
-    private uploadImageService: UploadImageService
+    private uploadImageService: UploadImageService,
+    public appConfigService: AppConfigService
   ) {
     console.log('IS DEV MODE ', isDevMode());
     this.APP_IS_DEV_MODE = isDevMode()
@@ -70,6 +76,13 @@ export class ProjectsComponent implements OnInit, OnDestroy {
     this.checkUserImageExist();
 
     // this.subscribeToLogoutPressedinSidebarNavMobilePrjctUndefined();
+    this.getStorageBucket();
+  }
+
+  getStorageBucket() {
+    const firebase_conf = this.appConfigService.getConfig().firebase;
+    this.storageBucket = firebase_conf['storageBucket'];
+    console.log('STORAGE-BUCKET Projects ', this.storageBucket)
   }
 
   checkUserImageExist() {
@@ -95,7 +108,13 @@ export class ProjectsComponent implements OnInit, OnDestroy {
 
   // project/:projectid/home
   // , available: boolean
-  goToHome(project_id: string, project_name: string, project_profile_name: string, project_trial_expired: string) {
+  goToHome(
+    project_id: string,
+    project_name: string,
+    project_profile_name: string,
+    project_trial_expired: string,
+    project_trial_days_left: number) {
+
     this.router.navigate([`/project/${project_id}/home`]);
 
     // WHEN THE USER SELECT A PROJECT ITS ID and NAME IS SEND IN THE AUTH SERVICE THAT PUBLISHES IT
@@ -104,7 +123,7 @@ export class ProjectsComponent implements OnInit, OnDestroy {
       name: project_name,
       profile_name: project_profile_name,
       trial_expired: project_trial_expired,
-
+      trial_days_left: project_trial_days_left
     }
 
     this.auth.projectSelected(project)
@@ -128,11 +147,11 @@ export class ProjectsComponent implements OnInit, OnDestroy {
     }
   }
 
-  // GO TO PROJECT-EDIT-ADD COMPONENT AND PASS THE PROJECT ID (RECEIVED FROM THE VIEW)
-  goToEditAddPage_EDIT(project_id: string) {
-    console.log('PROJECT ID ', project_id);
-    this.router.navigate(['project/edit', project_id]);
-  }
+  // !NO MORE USED - GO TO PROJECT-EDIT-ADD COMPONENT AND PASS THE PROJECT ID (RECEIVED FROM THE VIEW)
+  // goToEditAddPage_EDIT(project_id: string) {
+  //   console.log('PROJECT ID ', project_id);
+  //   this.router.navigate(['project/edit', project_id]);
+  // }
 
   /**
    * GET PROJECTS AND SAVE IN THE STORAGE: PROJECT ID - PROJECT NAME - USE ROLE   */
@@ -158,6 +177,9 @@ export class ProjectsComponent implements OnInit, OnDestroy {
               role: project.role,
               profile_name: project.id_project.profile.name,
               trial_expired: project.id_project.trialExpired,
+              trial_days_left: project.id_project.trialDaysLeft,
+              profile_type: project.id_project.profile.type,
+              subscription_is_active: project.id_project.isActiveSubscription
             }
 
             /***  ADDED TO KNOW IF THE CURRENT USER IS AVAILABLE IN SOME PROJECT
@@ -368,4 +390,11 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   testExpiredSessionFirebaseLogout() {
     this.auth.testExpiredSessionFirebaseLogout(true)
   }
+
+
+  goToCreateProject() {
+    this.router.navigate(['/create-new-project']);
+  }
+
+  
 }

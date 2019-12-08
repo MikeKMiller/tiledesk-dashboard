@@ -6,7 +6,10 @@ import { Http, Headers, RequestOptions } from '@angular/http';
 import 'rxjs/add/operator/map';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth.service';
+import { Router, NavigationEnd, NavigationStart, ActivatedRoute } from '@angular/router';
 
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { Project } from '../models/project-model';
 @Injectable()
 export class BotService {
 
@@ -17,9 +20,13 @@ export class BotService {
   TOKEN: string
   user: any;
 
+
+  public test: BehaviorSubject<String> = new BehaviorSubject<String>(null);
+
   constructor(
     http: Http,
-    private auth: AuthService
+    private auth: AuthService,
+    private router: Router
   ) {
     this.http = http;
 
@@ -30,6 +37,15 @@ export class BotService {
     this.auth.user_bs.subscribe((user) => {
       this.user = user;
       this.checkUser()
+    });
+
+    this.router.events.subscribe((ev) => {
+      if (ev instanceof NavigationEnd) {
+
+        console.log('BotService - NavigationEnd');
+        this.test.next('»»»»»»»»»   change of route »»»»»»»»»');
+
+      }
     });
 
   }

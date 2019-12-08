@@ -1,5 +1,5 @@
 // tslint:disable:max-line-length
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 // import { HttpClient } from '@angular/common/http';
 // import { Http, Headers, RequestOptions} from '@angular/http';
 import { ContactsService } from '../services/contacts.service';
@@ -11,13 +11,14 @@ import { NotifyService } from '../core/notify.service';
 import { avatarPlaceholder, getColorBck } from '../utils/util';
 import { UsersService } from '../services/users.service';
 import { TranslateService } from '@ngx-translate/core';
-
+import { ProjectPlanService } from '../services/project-plan.service';
+import { Subscription } from 'rxjs';
 @Component({
   selector: 'appdashboard-contacts',
   templateUrl: './contacts.component.html',
   styleUrls: ['./contacts.component.scss'],
 })
-export class ContactsComponent implements OnInit {
+export class ContactsComponent implements OnInit, OnDestroy {
 
   public colours = [
     '#1abc9c', '#2ecc71', '#3498db', '#9b59b6', '#34495e', '#16a085',
@@ -62,6 +63,14 @@ export class ContactsComponent implements OnInit {
   deleteLeadSuccessNoticationMsg: string;
   deleteLeadErrorNoticationMsg: string;
 
+  subscription: Subscription;
+  prjct_profile_type: string;
+  subscription_is_active: any;
+  prjct_profile_name: string;
+  subscription_end_date: Date;
+  trial_expired: boolean;
+  browserLang: string;
+
   constructor(
     private http: Http,
     private contactsService: ContactsService,
@@ -69,7 +78,8 @@ export class ContactsComponent implements OnInit {
     private auth: AuthService,
     private notify: NotifyService,
     private usersService: UsersService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private prjctPlanService: ProjectPlanService
   ) { }
 
   ngOnInit() {
@@ -79,6 +89,40 @@ export class ContactsComponent implements OnInit {
     this.getContacts();
     this.getCurrentProject();
     this.getProjectUserRole();
+    this.getProjectPlan();
+  }
+
+
+  getProjectPlan() {
+    this.subscription = this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+      console.log('ProjectPlanService (RequestsListHistoryNewComponent) project Profile Data', projectProfileData)
+      if (projectProfileData) {
+
+        this.prjct_profile_type = projectProfileData.profile_type;
+        this.subscription_is_active = projectProfileData.subscription_is_active;
+
+        this.subscription_end_date = projectProfileData.subscription_end_date;
+        this.trial_expired = projectProfileData.trial_expired
+
+        this.prjct_profile_name = this.buildPlanName(projectProfileData.profile_name, this.browserLang, this.prjct_profile_type);
+      }
+    })
+  }
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
+
+  buildPlanName(planName: string, browserLang: string, planType: string) {
+    if (planType === 'payment') {
+      if (browserLang === 'it') {
+        this.prjct_profile_name = 'Piano ' + planName;
+        return this.prjct_profile_name
+      } else if (browserLang !== 'it') {
+        this.prjct_profile_name = planName + ' Plan';
+        return this.prjct_profile_name
+      }
+    }
   }
 
   // TRANSLATION
@@ -183,7 +227,6 @@ export class ContactsComponent implements OnInit {
   }
 
   clearSearch() {
-
     // RESOLVE THE BUG: THE BUTTON CLEAR-SEARCH REMAIN FOCUSED AFTER PRESSED
     const clearSearchBtn = <HTMLElement>document.querySelector('.clearsearchbtn');
     console.log('!!!! CONTACTS - CLEAR SEARCH BTN', clearSearchBtn)
@@ -221,46 +264,40 @@ export class ContactsComponent implements OnInit {
       this.totalPagesNo_roundToUp = Math.ceil(totalPagesNo);
       console.log('!!!!! CONTACTS - TOTAL PAGES No ROUND TO UP ', this.totalPagesNo_roundToUp);
 
-
       this.generateAvatarFromName(this.contacts);
-
-
     }, (error) => {
-
       console.log('!!!! CONTACTS - GET LEADS - ERROR  ', error);
       this.showSpinner = false;
     }, () => {
       console.log('!!!! CONTACTS - GET LEADS * COMPLETE *');
-
       this.showSpinner = false;
     });
   }
 
 
   exportContactsToCsv() {
-    const exportToCsvBtn = <HTMLElement>document.querySelector('.export-to-csv-btn');
-    console.log('!!! NEW REQUESTS HISTORY - EXPORT TO CSV BTN', exportToCsvBtn)
-    exportToCsvBtn.blur()
 
-    this.contactsService.exportLeadToCsv(this.queryString, 0).subscribe((leads_object: any) => {
-      // console.log('!!!! CONTACTS - EXPORT CONTACT TO CSV RESPONSE ', leads_object);
+    if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false || this.prjct_profile_type === 'free' && this.trial_expired === true) {
+      this.notify.openDataExportNotAvailable()
+    } else {
+      const exportToCsvBtn = <HTMLElement>document.querySelector('.export-to-csv-btn');
+      console.log('!!! NEW REQUESTS HISTORY - EXPORT TO CSV BTN', exportToCsvBtn)
+      exportToCsvBtn.blur()
 
+      this.contactsService.exportLeadToCsv(this.queryString, 0).subscribe((leads_object: any) => {
+        // console.log('!!!! CONTACTS - EXPORT CONTACT TO CSV RESPONSE ', leads_object);
 
-      // console.log('!!!! CONTACTS - CONTACTS LIST ', this.contacts);
-
-      if (leads_object) {
-        console.log('!!!! CONTACTS - - EXPORT CONTACT TO CSV RESPONSE', leads_object);
-        this.downloadFile(leads_object);
-      }
-
-    }, (error) => {
-
-      console.log('!!!! CONTACTS - EXPORT CONTACT TO CSV - ERROR  ', error);
-
-    }, () => {
-      console.log('!!!! CONTACTS - EXPORT CONTACT TO CSV * COMPLETE *');
-
-    });
+        // console.log('!!!! CONTACTS - CONTACTS LIST ', this.contacts);
+        if (leads_object) {
+          console.log('!!!! CONTACTS - - EXPORT CONTACT TO CSV RESPONSE', leads_object);
+          this.downloadFile(leads_object);
+        }
+      }, (error) => {
+        console.log('!!!! CONTACTS - EXPORT CONTACT TO CSV - ERROR  ', error);
+      }, () => {
+        console.log('!!!! CONTACTS - EXPORT CONTACT TO CSV * COMPLETE *');
+      });
+    }
   }
 
   downloadFile(data) {

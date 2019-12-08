@@ -1,5 +1,6 @@
+import { MetricheComponent } from './analytics2/metriche/metriche.component';
 import { BrowserModule } from '@angular/platform-browser';
-import { NgModule } from '@angular/core';
+import { NgModule, APP_INITIALIZER } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpModule } from '@angular/http';
 import { RouterModule } from '@angular/router';
@@ -110,16 +111,69 @@ import { WidgetService } from './services/widget.service';
 import { ContactEditComponent } from './contact-edit/contact-edit.component';
 import { UsersPendingComponent } from './users-pending/users-pending.component';
 import { ActivitiesComponent } from './activities/activities.component';
-import { PricingComponent } from './pricing/pricing.component';
+
 import { AnalyticsStaticComponent } from './static-pages/analytics-static/analytics-static.component';
 import { ActivitiesStaticComponent } from './static-pages/activities-static/activities-static.component';
+import { TrainBotComponent } from './requests-msgs/train-bot/train-bot.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { FaqTestTrainBotComponent } from './faq-test/faq-test-train-bot/faq-test-train-bot.component';
 
+import { HeatMapModule, TooltipService, LegendService, AdaptorService } from '@syncfusion/ej2-angular-heatmap'
+import { AnalyticsService } from './services/analytics.service';
+import { Analytics2Component } from './analytics2/analytics2.component';
+import { PanoramicaComponent } from './analytics2/panoramica/panoramica.component';
+import { RealtimeComponent } from './analytics2/realtime/realtime.component';
+import { RichiesteComponent } from './analytics2/metriche/richieste/richieste.component';
+import { SentimentComponent } from './analytics2/metriche/sentiment/sentiment.component';
+import { TempirispostaComponent } from './analytics2/metriche/tempirisposta/tempirisposta.component';
+import { DurataconvComponent } from './analytics2/metriche/durataconv/durataconv.component';
+import { HoursStaticComponent } from './static-pages/hours-static/hours-static.component';
+import { DepartmentsStaticComponent } from './static-pages/departments-static/departments-static.component';
+import { ProjectPlanService } from './services/project-plan.service';
+import { SubscriptionService } from './services/subscription.service';
+import { TriggerComponent } from './trigger/trigger.component';
+import { BasetriggerComponent } from './trigger/basetrigger/basetrigger.component';
+import { TriggerService } from './services/trigger.service';
+import { TriggerAddComponent } from './trigger/trigger-add/trigger-add.component';
+import { TriggerEditComponent } from './trigger/trigger-edit/trigger-edit.component';
+
+
+/* PRIVATE */
+import { PricingModule } from './pricing/pricing.module';
+import { StaticPageBaseComponent } from './static-pages/static-page-base/static-page-base.component';
+
+import {SlideshowModule} from 'ng-simple-slideshow';
+import { GroupsStaticComponent } from './static-pages/groups-static/groups-static.component';
+import { FaqSidebarComponent } from './faq/faq-sidebar/faq-sidebar.component';
+import { CreateProjectComponent } from './create-project/create-project.component';
+import { InstallTiledeskComponent } from './install-tiledesk/install-tiledesk.component';
+import { HandleInvitationComponent } from './auth/handle-invitation/handle-invitation.component';
+
+import { environment } from '../environments/environment';
+import { AppConfigService } from './services/app-config.service';
+import { WsRequestsListComponent } from './ws-requests-list/ws-requests-list.component';
+import { WsRequestsService } from './services/websocket/ws-requests.service';
+import { WsRequestsMsgsComponent } from './ws-requests-msgs/ws-requests-msgs.component';
+// import { WebsocketService } from './services/websocket.service';
+import { WsMsgsService } from './services/websocket/ws-msgs.service';
+import { WsSharedComponent } from './ws-shared/ws-shared.component';
+import { WsTrainBotComponent } from './ws-requests-msgs/ws-train-bot/ws-train-bot.component';
+import { WebSocketJs } from './services/websocket/websocket-js';
 
 console.log('************** APPMODULE ******************');
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient) {
   return new TranslateHttpLoader(http, './assets/i18n/', '.json');
 }
+
+const appInitializerFn = (appConfig: AppConfigService) => {
+  return () => {
+    if (environment.remoteConfig) {
+      return appConfig.loadAppConfig();
+    }
+  };
+};
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -175,11 +229,39 @@ export function HttpLoaderFactory(http: HttpClient) {
     ContactEditComponent,
     UsersPendingComponent,
     ActivitiesComponent,
-    PricingComponent,
     AnalyticsStaticComponent,
     ActivitiesStaticComponent,
+    TrainBotComponent,
+    FaqTestTrainBotComponent,
+    Analytics2Component,
+    PanoramicaComponent,
+    MetricheComponent,
+    RealtimeComponent,
+    RichiesteComponent,
+    SentimentComponent,
+    TempirispostaComponent,
+    DurataconvComponent,
+    HoursStaticComponent,
+    DepartmentsStaticComponent,
+    StaticPageBaseComponent,
+    GroupsStaticComponent,
+    TriggerComponent,
+    TriggerAddComponent,
+    TriggerEditComponent,
+    BasetriggerComponent,
+    FaqSidebarComponent,
+    CreateProjectComponent,
+    InstallTiledeskComponent,
+    HandleInvitationComponent,
+    WsRequestsListComponent,
+    WsRequestsMsgsComponent,
+    WsSharedComponent,
+    WsTrainBotComponent
   ],
   imports: [
+    /* PRIVATE */
+    PricingModule,
+    /* PRIVATE */
     BrowserModule,
     FormsModule,
     ReactiveFormsModule,
@@ -190,6 +272,7 @@ export function HttpLoaderFactory(http: HttpClient) {
     HttpModule,
     ComponentsModule,
     RouterModule,
+    HeatMapModule,
     // AngularFireModule.initializeApp(firebaseConfig),
     HttpModule,
     HttpClientModule,
@@ -198,6 +281,8 @@ export function HttpLoaderFactory(http: HttpClient) {
     NgSelectModule,
     MyDatePickerModule,
     ColorPickerModule,
+    BrowserAnimationsModule,
+    SlideshowModule,
     TranslateModule.forRoot({
       loader: {
         provide: TranslateLoader,
@@ -207,6 +292,17 @@ export function HttpLoaderFactory(http: HttpClient) {
     }),
   ],
   providers: [
+    AppConfigService, // https://juristr.com/blog/2018/01/ng-app-runtime-config/
+    {
+      provide: APP_INITIALIZER,
+      useFactory: appInitializerFn,
+      multi: true,
+      deps: [AppConfigService]
+    },
+    WsRequestsService,
+    WsMsgsService,
+    // WebsocketService,
+    WebSocketJs,
     UsersService,
     ContactsService,
     RequestsService,
@@ -221,6 +317,10 @@ export function HttpLoaderFactory(http: HttpClient) {
     ResetPswService,
     UploadImageService,
     WidgetService,
+    ProjectPlanService,
+    SubscriptionService,
+    LegendService, TooltipService, AdaptorService, AnalyticsService, HttpClientModule,
+    TriggerService,
     { provide: LocationStrategy, useClass: HashLocationStrategy }
   ],
   bootstrap: [

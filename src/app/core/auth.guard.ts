@@ -28,6 +28,8 @@ export class AuthGuard implements CanActivate {
   is_verify_email_page: boolean;
   is_signup_page: boolean;
   is_reset_psw_page: boolean;
+  is_handleinvitation_page: boolean;
+  is_signup_on_invitation_page: boolean;
 
   nav_project_id: string;
   current_project_id: string;
@@ -52,16 +54,17 @@ export class AuthGuard implements CanActivate {
     private projectService: ProjectService,
     private usersService: UsersService
   ) {
-    console.log('HELLO AUTH GUARD !!!')
+    console.log('!! AUTH WF in auth.guard  hello !!!')
 
     this.user = auth.user_bs.value;
     this.auth.user_bs.subscribe((user) => {
       // tslint:disable-next-line:no-debugger
       // debugger
       this.user = user;
-      console.log('AUTH GUARD USER ', user)
+      console.log('!! AUTH WF USER ', user)
     });
 
+    this.detectRoute();
     this.detectVerifyEmailRoute();
     this.detectSignUpRoute();
     this.detectResetPswRoute();
@@ -76,8 +79,6 @@ export class AuthGuard implements CanActivate {
      * NEW: initialize the new project when the id of the project get from url does not match with the current project id  */
     // this.getCurrentProject();
     this.getProjectIdFromUrl();
-
-    
   }
 
   // canDeactivate(
@@ -92,33 +93,30 @@ export class AuthGuard implements CanActivate {
 
   getCurrentProject() {
     this.auth.project_bs.subscribe((project) => {
-      console.log('!! AUTH GUARD - CURRENT PROJECT: ', project)
+      console.log('!! AUTH WF in auth.guard - CURRENT PROJECT: ', project)
       // tslint:disable-next-line:no-debugger
       // debugger
 
       if (project) {
-        console.log('!! AUTH GUARD - CURRENT PROJECT ID : ', project._id)
+        console.log('!! AUTH WF in auth.guard - CURRENT PROJECT ID : ', project._id)
         this.current_project_id = project._id;
-        
       }
     });
   }
 
   getProjectIdFromUrl() {
-
-
     this.subscription = this.router.events.subscribe((e) => {
       if (e instanceof NavigationEnd) {
         const current_url = e.url
         // if (this.location.path() !== '') {
         // const current_url = this.location.path()
-        console.log('!!C-U AUTH GUARD - CURRENT URL ', current_url);
+        console.log('!! AUTH WF in auth.guard - CURRENT URL ', current_url);
 
         const url_segments = current_url.split('/');
-        console.log('!!C-U AUTH GUARD - CURRENT URL SEGMENTS ', url_segments);
+        console.log('!! AUTH WF in auth.guard- CURRENT URL SEGMENTS ', url_segments);
 
         this.nav_project_id = url_segments[2];
-        console.log('!! »»»»» AUTH GUARD - CURRENT URL SEGMENTS > NAVIGATION PROJECT ID: ', this.nav_project_id);
+        console.log('!! AUTH WF in auth.guard - CURRENT URL SEGMENTS > NAVIGATION PROJECT ID: ', this.nav_project_id);
 
         /**
          * !!! NO MORE USED checkIf_NavPrjctIdMatchesCurrentPrjctId()
@@ -136,10 +134,14 @@ export class AuthGuard implements CanActivate {
          * CLICKED ON THE LINK IN THE INVITATION EMAIL TO PARTICIPATE IN A PROJECT)
          * IN THIS CASE, A CALL IS DONE TO OBTAIN THE NAME OF THE PROJECT AND AFTER THE ID
          * AND NAME OF THE PROJECT ARE SAVED IN THE LOCAL STORAGE AND PASSES TO THE SERVICE THAT PUBLISHES
-         * (note: the NAVIGATION PROJECT ID returned from CURRENT URL SEGMENTS is = to 'email' 
+         * (note: the NAVIGATION PROJECT ID returned from CURRENT URL SEGMENTS is = to 'email'
          * if the user navigate to the e-mail verification page)
-         * */
-        if (this.nav_project_id && this.nav_project_id !== 'email') {
+         * If the CURRENT URL has only one element (for example /create-project (i.e. the wizard for the creation a of a project)
+         * the url_segments[2] (that is the project id) is undefined)
+         * and the Workflow not proceed with the below code
+         */
+        // tslint:disable-next-line:max-line-length
+        if (this.nav_project_id && this.nav_project_id !== 'email' && url_segments[1] !== 'handle-invitation' && url_segments[1] !== 'signup-on-invitation') {
 
           this.subscription.unsubscribe();
 
@@ -151,11 +153,11 @@ export class AuthGuard implements CanActivate {
 
   checkStoredProject(navigationProjectId) {
     const storedProjectJson = localStorage.getItem(navigationProjectId);
-    console.log('!! »»»»» AUTH GUARD - PROJECT JSON GET FROM STORAGE ', storedProjectJson);
+    console.log('!! AUTH WF in auth.guard - PROJECT JSON GET FROM STORAGE ', storedProjectJson);
 
 
     if (storedProjectJson === null) {
-      console.log('!!C-U  »»»»» AUTH GUARD - PROJECT JSON IS NULL - RUN getProjectById() ')
+      console.log('!! AUTH WF in auth.guard - PROJECT JSON IS NULL - RUN getProjectById() ')
       this.getProjectPublishAndSaveInStorage();
     }
 
@@ -189,19 +191,19 @@ export class AuthGuard implements CanActivate {
   getProjectPublishAndSaveInStorage() {
     // this.projectService.getProjectAndUserDetailsByProjectId(this.nav_project_id).subscribe((prjct: any) => {
     this.projectService.getProjects().subscribe((prjcts: any) => {
-      console.log('!! »»»»» AUTH GUARD - PROJECTS OBJCTS FROM REMOTE CALLBACK ', prjcts);
+      console.log('!! AUTH WF in auth.guard - PROJECTS OBJCTS FROM REMOTE CALLBACK ', prjcts);
 
       const prjct = prjcts.filter(p => p.id_project._id === this.nav_project_id);
 
-      console.log('!! »»»»» AUTH GUARD - PROJECT OBJCT FILTERED FOR PROJECT ID ', prjct);
-      console.log('!! »»»»» AUTH GUARD - PROJECT OBJCT FILTERED FOR PROJECT ID LENGHT ', prjct.length);
+      console.log('!! AUTH WF in auth.guard - PROJECT OBJCT FILTERED FOR PROJECT ID ', prjct);
+      console.log('!! AUTH WF in auth.guard - PROJECT OBJCT FILTERED FOR PROJECT ID LENGHT ', prjct.length);
 
       if (prjct && prjct.length > 0) {
-        console.log('!! »»»»» AUTH GUARD - TEST --- QUI ENTRO');
+        console.log('!! AUTH WF in auth.guard - TEST --- QUI ENTRO');
         // console.log('!!!!!! AUTH GUARD - N.P.I DOES NOT MATCH C.P.I - PROJECT GOT BY THE NAV PROJECT ID (N.P.I): ', project);
 
         this.nav_project_name = prjct[0].id_project.name;
-        console.log('!! »»»»» AUTH GUARD - PROJECT NAME GOT BY THE NAV PROJECT ID ', this.nav_project_name);
+        console.log('!! AUTH WF in auth.guard - PROJECT NAME GOT BY THE NAV PROJECT ID ', this.nav_project_name);
         // tslint:disable-next-line:max-line-length
         // this.notify.showNotificationChangeProject(`You have been redirected to the project <span style="color:#ffffff; display: inline-block; max-width: 100%;"> ${this.nav_project_name} </span>`, 0, 'info');
 
@@ -209,11 +211,12 @@ export class AuthGuard implements CanActivate {
           _id: this.nav_project_id,
           name: this.nav_project_name,
           profile_name: prjct[0].id_project.profile.name,
-          trial_expired: prjct[0].id_project.trialExpired
+          trial_expired: prjct[0].id_project.trialExpired,
+          trial_days_left: prjct[0].id_project.trialDaysLeft,
         }
         // PROJECT ID and NAME ARE SENT TO THE AUTH SERVICE THAT PUBLISHES
         this.auth.projectSelected(project);
-        console.log('!!C-U »»»»» AUTH GUARD - PROJECT THAT IS PUBLISHED ', project);
+        console.log('!! AUTH WF in auth.guard - PROJECT THAT IS PUBLISHED ', project);
         // this.project_bs.next(project);
 
         const projectForStorage: Project = {
@@ -221,13 +224,15 @@ export class AuthGuard implements CanActivate {
           name: this.nav_project_name,
           role: prjct[0].role,
           profile_name: prjct[0].id_project.profile.name,
-          trial_expired: prjct[0].id_project.trialExpired
+          trial_expired: prjct[0].id_project.trialExpired,
+          trial_days_left: prjct[0].id_project.trialDaysLeft
         }
         // SET THE ID, the NAME OF THE PROJECT and THE USER ROLE IN THE LOCAL STORAGE.
         console.log('!! »»»»» AUTH GUARD - PROJECT THAT IS STORED', projectForStorage);
         localStorage.setItem(this.nav_project_id, JSON.stringify(projectForStorage));
 
         // GET AND SAVE ALL USERS OF CURRENT PROJECT IN LOCAL STORAGE
+        console.log('AUTH GUARD CALL -> getAllUsersOfCurrentProjectAndSaveInStorage')
         this.usersService.getAllUsersOfCurrentProjectAndSaveInStorage();
 
         // GET AND SAVE ALL BOTS OF CURRENT PROJECT IN LOCAL STORAGE
@@ -320,15 +325,49 @@ export class AuthGuard implements CanActivate {
       if (this.route.indexOf('/verify') !== -1) {
         // this.router.navigate([`${this.route}`]);
         this.is_verify_email_page = true;
-        console.log('»> »>  AUTH GUARD - IS VERIFY EMAIL PAGE »> »> ', this.is_verify_email_page);
+        console.log('%AUTH GUARD - IS VERIFY EMAIL PAGE »> »> ', this.is_verify_email_page);
 
       } else {
         this.is_verify_email_page = false;
-        console.log('»> »>  AUTH GUARD - IS VERIFY EMAIL PAGE »> »> ', this.is_verify_email_page);
+        console.log('%AUTH GUARD - IS VERIFY EMAIL PAGE »> »> ', this.is_verify_email_page);
 
       }
     }
     // });
+  }
+
+  // 
+
+  detectRoute() {
+    if (this.location.path() !== '') {
+      this.route = this.location.path();
+      // console.log('»> »> AUTH GUARD »> »> ', this.route);
+      if (this.route.indexOf('/handle-invitation') !== -1) {
+        // this.router.navigate([`${this.route}`]);
+        this.is_handleinvitation_page = true;
+        console.log('%AUTH GUARD - IS HANDLE-INVITATION PAGE »> »> ', this.is_handleinvitation_page);
+
+      } else {
+        this.is_handleinvitation_page = false;
+        console.log('%AUTH GUARD - IS HANDLE-INVITATION PAGE »> »> ', this.is_handleinvitation_page);
+
+      }
+
+
+      if (this.route.indexOf('/signup-on-invitation') !== -1) {
+        // this.router.navigate([`${this.route}`]);
+        this.is_signup_on_invitation_page = true;
+        console.log('%AUTH GUARD - IS SIGNUP-ON-INVITATION PAGE »> »> ', this.is_signup_on_invitation_page);
+
+      } else {
+        this.is_signup_on_invitation_page = false;
+        console.log('%AUTH GUARD - IS SIGNUP-ON-INVITATION  PAGE »> »> ', this.is_signup_on_invitation_page);
+
+      }
+
+
+    }
+
   }
 
   detectSignUpRoute() {
@@ -338,11 +377,11 @@ export class AuthGuard implements CanActivate {
       if (this.route.indexOf('/signup') !== -1) {
         // this.router.navigate([`${this.route}`]);
         this.is_signup_page = true;
-        console.log('»> »>  AUTH GUARD - IS SIGNUP PAGE »> »> ', this.is_signup_page);
+        console.log('%AUTH GUARD  - IS SIGNUP PAGE »> »> ', this.is_signup_page);
 
       } else {
         this.is_signup_page = false;
-        console.log('»> »>  AUTH GUARD - IS SIGNUP PAGE »> »> ', this.is_signup_page);
+        console.log('%AUTH GUARD  - IS SIGNUP PAGE »> »> ', this.is_signup_page);
 
       }
     }
@@ -355,19 +394,24 @@ export class AuthGuard implements CanActivate {
       if (this.route.indexOf('/resetpassword') !== -1) {
         // this.router.navigate([`${this.route}`]);
         this.is_reset_psw_page = true;
-        console.log('»> »>  AUTH GUARD - IS RESET PSW PAGE »> »> ', this.is_reset_psw_page);
+        console.log('%AUTH GUARD  - IS RESET PSW PAGE »> »> ', this.is_reset_psw_page);
       } else {
         this.is_reset_psw_page = false;
-        console.log('»> »>  AUTH GUARD - IS RESET PSW PAGE »> »> ', this.is_reset_psw_page);
+        console.log('%AUTH GUARD  - IS RESET PSW PAGE »> »> ', this.is_reset_psw_page);
       }
     }
   }
 
   canActivate() {
-    console.log('»> »> !!! »»» AUTH GUARD - CAN ACTIVATE AlwaysAuthGuard');
+    console.log('!! AUTH WF in auth.guard - CAN ACTIVATE AlwaysAuthGuard');
 
     // tslint:disable-next-line:max-line-length
-    if ((this.user) || (this.is_verify_email_page === true) || (this.is_signup_page === true) || (this.is_reset_psw_page === true)) {
+    if ((this.user) ||
+      (this.is_verify_email_page === true) ||
+      (this.is_signup_page === true) ||
+      (this.is_reset_psw_page === true) ||
+      (this.is_handleinvitation_page === true) ||
+      (this.is_signup_on_invitation_page === true)) {
       // this.router.navigate(['/home']);
       return true;
       // if ((!this.user) || (this.is_verify_email_page === false))
@@ -382,14 +426,6 @@ export class AuthGuard implements CanActivate {
     //   return false;
     // }
   }
-
-
-
-
-
-
- 
-
 
 
   // canActivate(next: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> | boolean {

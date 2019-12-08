@@ -18,7 +18,7 @@ Consider that Tiledesk.com cloud service makes every module available with the s
 - Tiledesk Backoffice (this repo)
 - All the chat components are available thanks to the Chat21 open source project, also available on GitHub (https://github.com/chat21)
 
-Feel free to ask for support on http://tiledesk.com, using the live chat widget on the the website.
+Feel free to ask for support on https://tiledesk.com, using the live chat widget on the the website.
 
 ## Features
 
@@ -30,45 +30,63 @@ Feel free to ask for support on http://tiledesk.com, using the live chat widget 
 ## Prerequisite
 
 For Firebase Auth and Firebase Database: create an account at https://firebase.google.com/
-For MongoDB CRUD: install and running tiledesk-api-nodejs (https://github.com/Tiledesk/tiledesk-api-nodejs)
+For MongoDB CRUD: install and running tiledesk-server (https://github.com/Tiledesk/tiledesk-server.git)
+                                            
 
 - `git clone https://github.com/Tiledesk/tiledesk-dashboard.git`
 - `cd tiledesk-dashboard`
 - `npm install`
 
-Edit the environment.ts file and create the enviroment.prod.ts in `src/environments/`.
+Edit the environment.*.ts file in `src/environments/`.
 
 #### environment.ts
 ```typescript
+const serverUrl = '/api/';
 export const environment = {
+ ...
     production: false,
-    firebaseConfig: {
-        apiKey: 'APIKEY',
-        authDomain: 'PROJECT-ID.firebaseapp.com',
-        databaseURL: 'https://PROJECT-ID.firebaseio.com',
-        projectId: 'PROJECT-ID',
-        storageBucket: 'PROJECT-ID.appspot.com',
-        messagingSenderId: '123456789'
+    VERSION: require('../../package.json').version,
+    widgetUrl: 'http://localhost:4200/launch.js',
+    remoteConfig: true,
+    remoteConfigUrl: '/firebase-config.json',
+    firebase: {
+        apiKey: 'CHANGEIT',
+        authDomain: 'CHANGEIT',
+        databaseURL: 'CHANGEIT',
+        projectId: 'CHANGEIT',
+        storageBucket: 'CHANGEIT',
+        messagingSenderId: 'CHANGEIT',
+        chat21ApiUrl: 'CHANGEIT'
     },
-    mongoDbConfig: {
-        BASE_URL: 'http://localhost:3000/',
-        PROJECTS_BASE_URL: 'http://localhost:3000/projects/',
-        SIGNUP_BASE_URL: 'http://localhost:3000/auth/signup',
-        SIGNIN_BASE_URL: 'http://localhost:3000/auth/signin',
+    ...
+    chat: {
+        CHAT_BASE_URL: '/chat/',
     },
+    testsite: {
+        testsiteBaseUrl: 'http://localhost:4200/assets/test_widget_page/index.html'
+    }
 };
+
+
+
 ```
 #### environment.prod.ts
 ```typescript
+const serverUrl = 'https://api.TILEDESKSERVER/';
 export const environment = {
     production: true,
     firebaseConfig: {
         // same as above, or use a different firebase project to isolate environments
+    }
+    ...
+    chat: {
+        CHAT_BASE_URL: 'https://support.YOURDOMAIN/chat/',
     },
-     mongoDbConfig: {
-        // same as above
-    },
-};
+    testsite: {
+        testsiteBaseUrl: 'https://widget.YOURDOMAIN/assets/twp/index.html'
+    }
+},
+
 ```
 
 And finally `ng serve`

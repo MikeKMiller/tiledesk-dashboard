@@ -1,9 +1,9 @@
-import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, OnDestroy } from '@angular/core';
 import { RequestsService } from '../services/requests.service';
 import { Request } from '../models/request-model';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
-import { IMyDpOptions, IMyDateModel } from 'mydatepicker';
+import { IMyDpOptions, IMyDateModel, IMyDate } from 'mydatepicker';
 import { DepartmentService } from '../services/mongodb-department.service';
 import { trigger, state, style, animate, transition, query, animateChild } from '@angular/animations';
 import { UsersLocalDbService } from '../services/users-local-db.service';
@@ -11,6 +11,12 @@ import { BotLocalDbService } from '../services/bot-local-db.service';
 import { UsersService } from '../services/users.service';
 import { FaqKbService } from '../services/faq-kb.service';
 import { avatarPlaceholder, getColorBck } from '../utils/util';
+import { Subscription } from 'rxjs';
+import { ProjectPlanService } from '../services/project-plan.service';
+import { TranslateService } from '@ngx-translate/core';
+import { NotifyService } from '../core/notify.service';
+import { AppConfigService } from '../services/app-config.service';
+
 @Component({
   selector: 'appdashboard-requests-list-history-new',
   templateUrl: './requests-list-history-new.component.html',
@@ -43,7 +49,7 @@ import { avatarPlaceholder, getColorBck } from '../utils/util';
 })
 
 
-export class RequestsListHistoryNewComponent implements OnInit {
+export class RequestsListHistoryNewComponent implements OnInit, OnDestroy {
 
   @ViewChild('advancedoptionbtn') private advancedoptionbtnRef: ElementRef;
   @ViewChild('searchbtn') private searchbtnRef: ElementRef;
@@ -80,11 +86,23 @@ export class RequestsListHistoryNewComponent implements OnInit {
   requester_email: string;
   REQUESTER_IS_VERIFIED = false;
 
+  subscription: Subscription;
+  prjct_profile_type: string;
+  subscription_is_active: any;
+  prjct_profile_name: string;
+  subscription_end_date: Date;
+  trial_expired: boolean;
+  browserLang: string;
+
+  date_picker_is_disabled: boolean;
+
   public myDatePickerOptions: IMyDpOptions = {
     // other options...
     dateFormat: 'dd/mm/yyyy',
     // dateFormat: 'yyyy, mm , dd',
   };
+  storageBucket: string;
+
   constructor(
     private requestsService: RequestsService,
     private router: Router,
@@ -93,8 +111,12 @@ export class RequestsListHistoryNewComponent implements OnInit {
     private botLocalDbService: BotLocalDbService,
     private departmentService: DepartmentService,
     private usersService: UsersService,
-    private faqKbService: FaqKbService
-  ) { }
+    private faqKbService: FaqKbService,
+    private prjctPlanService: ProjectPlanService,
+    private translate: TranslateService,
+    private notify: NotifyService,
+    public appConfigService: AppConfigService
+  ) {  }
 
   ngOnInit() {
     // this.auth.checkRoleForCurrentProject();
@@ -107,10 +129,68 @@ export class RequestsListHistoryNewComponent implements OnInit {
     this.getCurrentProject();
     this.getDepartments();
     this.getAllProjectUsers();
-
-
+    this.getProjectPlan();
+    this.getBrowserLang();
     // this.createBotsAndUsersArray();
+
+    this.getStorageBucket();
   }
+
+  getStorageBucket() {
+    const firebase_conf = this.appConfigService.getConfig().firebase;
+    this.storageBucket = firebase_conf['storageBucket'];
+    console.log('STORAGE-BUCKET Requests-list-history ', this.storageBucket)
+  }
+
+  getBrowserLang() {
+    this.browserLang = this.translate.getBrowserLang();
+  }
+
+  getProjectPlan() {
+    this.subscription = this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+      console.log('ProjectPlanService (RequestsListHistoryNewComponent) project Profile Data', projectProfileData)
+      if (projectProfileData) {
+
+        this.prjct_profile_type = projectProfileData.profile_type;
+        this.subscription_is_active = projectProfileData.subscription_is_active;
+
+        this.subscription_end_date = projectProfileData.subscription_end_date;
+        this.trial_expired = projectProfileData.trial_expired
+
+        this.prjct_profile_name = this.buildPlanName(projectProfileData.profile_name, this.browserLang, this.prjct_profile_type);
+
+        // tslint:disable-next-line:max-line-length
+        if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false || this.prjct_profile_type === 'free' && this.trial_expired === true) {
+          this.date_picker_is_disabled = true;
+          // this.notify.displaySubscripionHasExpiredModal(true, this.prjct_profile_name, this.subscription_end_date)
+        } else {
+          this.date_picker_is_disabled = false;
+        }
+      }
+    })
+  }
+
+  buildPlanName(planName: string, browserLang: string, planType: string) {
+    if (planType === 'payment') {
+      if (browserLang === 'it') {
+        this.prjct_profile_name = 'Piano ' + planName;
+        return this.prjct_profile_name
+      } else if (browserLang !== 'it') {
+        this.prjct_profile_name = planName + ' Plan';
+        return this.prjct_profile_name
+      }
+    }
+  }
+
+  openModalSubsExpiredOrGoToPricing() {
+    if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false) {
+      this.notify.displaySubscripionHasExpiredModal(true, this.prjct_profile_name, this.subscription_end_date);
+    }
+    if (this.prjct_profile_type === 'free' && this.trial_expired === true) {
+      this.router.navigate(['project/' + this.projectId + '/pricing']);
+    }
+  }
+
 
   getAllProjectUsers() {
     // createBotsAndUsersArray() {
@@ -123,7 +203,6 @@ export class RequestsListHistoryNewComponent implements OnInit {
         });
 
         console.log('!!! NEW REQUESTS HISTORY  - !!!! USERS ARRAY ', this.user_and_bot_array);
-
       }
     }, (error) => {
       console.log('!!! NEW REQUESTS HISTORY - GET PROJECT-USERS ', error);
@@ -131,7 +210,6 @@ export class RequestsListHistoryNewComponent implements OnInit {
       console.log('!!! NEW REQUESTS HISTORY - GET PROJECT-USERS * COMPLETE *');
       this.getAllBot();
     });
-
   }
 
   getAllBot() {
@@ -153,7 +231,6 @@ export class RequestsListHistoryNewComponent implements OnInit {
 
   getCurrentUser() {
     const user = this.auth.user_bs.value
-
     console.log('!!! NEW REQUESTS HISTORY - LOGGED USER ', user);
     if (user) {
       // this.currentUserFireBaseUID = this.user.uid
@@ -411,11 +488,7 @@ export class RequestsListHistoryNewComponent implements OnInit {
         this.showAdvancedSearchOption = true;
       }
     }
-
     this.getRequests()
-
-    // }
-
   }
 
 
@@ -433,27 +506,31 @@ export class RequestsListHistoryNewComponent implements OnInit {
   }
 
   exportRequestsToCSV() {
-    const exportToCsvBtn = <HTMLElement>document.querySelector('.export-to-csv-btn');
-    console.log('!!! NEW REQUESTS HISTORY - EXPORT TO CSV BTN', exportToCsvBtn)
-    exportToCsvBtn.blur()
+    // tslint:disable-next-line:max-line-length
+    if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false || this.prjct_profile_type === 'free' && this.trial_expired === true) {
+      this.notify.openDataExportNotAvailable()
+    } else {
+      const exportToCsvBtn = <HTMLElement>document.querySelector('.export-to-csv-btn');
+      console.log('!!! NEW REQUESTS HISTORY - EXPORT TO CSV BTN', exportToCsvBtn)
+      exportToCsvBtn.blur()
 
-    this.requestsService.downloadNodeJsHistoryRequestsAsCsv(this.queryString, 0).subscribe((requests: any) => {
+      this.requestsService.downloadNodeJsHistoryRequestsAsCsv(this.queryString, 0).subscribe((requests: any) => {
+        if (requests) {
+          console.log('!!! NEW REQUESTS HISTORY - DOWNLOAD REQUESTS AS CSV - RES ', requests);
 
-      if (requests) {
-        console.log('!!! NEW REQUESTS HISTORY - DOWNLOAD REQUESTS AS CSV - RES ', requests);
+          // const reqNoLineBreaks = requests.replace(/(\r\n\t|\n|\r\t)/gm, ' ');
+          // console.log('!!! DOWNLOAD REQUESTS AS CSV - REQUESTS NO NEW LINE ', reqNoLineBreaks);
+          this.downloadFile(requests)
+        }
+      }, error => {
+        console.log('!!! NEW REQUESTS HISTORY - DOWNLOAD REQUESTS AS CSV - ERROR: ', error);
+      }, () => {
+        console.log('!!! NEW REQUESTS HISTORY - DOWNLOAD REQUESTS AS CSV * COMPLETE *')
+      });
 
-        // const reqNoLineBreaks = requests.replace(/(\r\n\t|\n|\r\t)/gm, ' ');
-        // console.log('!!! DOWNLOAD REQUESTS AS CSV - REQUESTS NO NEW LINE ', reqNoLineBreaks);
-        this.downloadFile(requests)
-      }
-    }, error => {
-
-      console.log('!!! NEW REQUESTS HISTORY - DOWNLOAD REQUESTS AS CSV - ERROR: ', error);
-    }, () => {
-
-      console.log('!!! NEW REQUESTS HISTORY - DOWNLOAD REQUESTS AS CSV * COMPLETE *')
-    });
+    }
   }
+
 
   downloadFile(data) {
     const blob = new Blob(['\ufeff' + data], { type: 'text/csv;charset=utf-8;' });
@@ -673,5 +750,8 @@ export class RequestsListHistoryNewComponent implements OnInit {
     this.router.navigate(['project/' + this.projectId + '/request/' + request_recipient + '/messages']);
   }
 
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
 
 }

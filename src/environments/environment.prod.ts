@@ -1,18 +1,19 @@
-// tslint:disable:max-line-length
+
 const serverUrl = 'https://api.tiledesk.com/v1/';
-const serverChatUrl = 'https://api.tiledesk.com/v1/chat/';
 export const environment = {
     production: true,
+    t2y12PruGU9wUtEGzBJfolMIgK: 'uTdBCRvGAEhJ01cT3uBLg8oFJx',
     VERSION: require('../../package.json').version,
-    widgetUrl: 'https://widget.tiledesk.com/v2/tiledesk.js',
-    firebaseConfig: {
-        apiKey: 'AIzaSyDWMsqHBKmWVT7mWiSqBfRpS5U8YwTl7H0',
-        authDomain: 'chat-v2-dev.firebaseapp.com',
-        databaseURL: 'https://chat-v2-dev.firebaseio.com',
-        projectId: 'chat-v2-dev',
-        storageBucket: 'chat-v2-dev.appspot.com',
-        messagingSenderId: '77360455507',
-        // timestampsInSnapshots: true,
+    widgetUrl: 'https://widget.tiledesk.com/v3/launch.js',
+    remoteConfig: false, // for performance don't load settings from remote
+    firebase: {
+        apiKey: 'CHANGEIT',
+        authDomain: 'CHANGEIT',
+        databaseURL: 'CHANGEIT',
+        projectId: 'CHANGEIT',
+        storageBucket: 'CHANGEIT',
+        messagingSenderId: 'CHANGEIT',
+        chat21ApiUrl: 'CHANGEIT'
     },
     mongoDbConfig: {
         BASE_URL: `${serverUrl}`,
@@ -28,13 +29,10 @@ export const environment = {
         CHANGE_PSW: `${serverUrl}users/changepsw/`,
         RESEND_VERIFY_EMAIL: `${serverUrl}users/resendverifyemail/`,
     },
-    cloudFunctions: {
-        cloud_func_close_support_group_base_url: `${serverChatUrl}support/tilechat/groups/`,  // old address: https://us-central1-chat-v2-dev.cloudfunctions.net/supportapi/tilechat/groups/
-        cloud_functions_base_url: `${serverChatUrl}tilechat/groups/`, // old address: https://us-central1-chat-v2-dev.cloudfunctions.net/api/tilechat/groups/,
-        cloud_func_create_contact_url: `${serverChatUrl}tilechat/contacts`, // old address: https://us-central1-chat-v2-dev.cloudfunctions.net/api/tilechat/contacts
-        cloud_func_update_firstname_and_lastname: `${serverChatUrl}tilechat/contacts/me`, // old address: https://us-central1-chat-v2-dev.cloudfunctions.net/api/tilechat/contacts/me
-    },
     chat: {
         CHAT_BASE_URL: 'https://support.tiledesk.com/chat/',
+    },
+    testsite: {
+        testsiteBaseUrl: 'https://widget.tiledesk.com/v3/assets/twp/index.html'
     }
 };

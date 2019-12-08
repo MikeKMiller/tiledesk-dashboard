@@ -1,17 +1,20 @@
-import { Component, OnInit } from '@angular/core';
+// tslint:disable:max-line-length
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Project } from '../models/project-model';
 import { AuthService } from '../core/auth.service';
 import { Router } from '@angular/router';
 import { UsersService } from '../services/users.service';
 import { ActivatedRoute } from '@angular/router';
 import { NotifyService } from '../core/notify.service';
-
+import { ProjectPlanService } from '../services/project-plan.service';
+import { TranslateService } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-user-edit-add',
   templateUrl: './user-edit-add.component.html',
   styleUrls: ['./user-edit-add.component.scss']
 })
-export class UserEditAddComponent implements OnInit {
+export class UserEditAddComponent implements OnInit, OnDestroy {
 
   CREATE_VIEW = false;
   EDIT_VIEW = false;
@@ -34,18 +37,31 @@ export class UserEditAddComponent implements OnInit {
   INVITE_OTHER_ERROR: boolean;
   INVITE_USER_ALREADY_MEMBER_ERROR: boolean;
   INVITE_USER_NOT_FOUND: boolean;
+  PENDING_INVITATION_ALREADY_EXIST: boolean;
 
   project_user_id: string;
   user_role: string;
   EMAIL_IS_VALID = true;
 
   selectedRole: string;
+  projectUsersLength: number;
+  projectPlanAgentsNo: number;
+  prjct_profile_type: string;
+  countOfPendingInvites: number;
+  subscription_is_active: string;
+  subscription_end_date: any;
+  prjct_profile_name: string;
+  browserLang: string;
+  subscription: Subscription;
   constructor(
     private router: Router,
     private auth: AuthService,
     private usersService: UsersService,
     private route: ActivatedRoute,
-    private notify: NotifyService
+    private notify: NotifyService,
+    private prjctPlanService: ProjectPlanService,
+    private translate: TranslateService,
+
   ) { }
 
   ngOnInit() {
@@ -67,6 +83,95 @@ export class UserEditAddComponent implements OnInit {
     }
 
     this.getCurrentProject();
+    this.getAllUsersOfCurrentProject();
+    this.getProjectPlan();
+    this.getPendingInvitation();
+    this.getBrowserLang();
+
+  }
+
+  getBrowserLang() {
+    this.browserLang = this.translate.getBrowserLang();
+  }
+
+  getAllUsersOfCurrentProject() {
+    this.usersService.getProjectUsersByProjectId().subscribe((projectUsers: any) => {
+      console.log('UserEditAddComponent PROJECT USERS ', projectUsers);
+
+      if (projectUsers) {
+        this.projectUsersLength = projectUsers.length;
+        console.log('UserEditAddComponent PROJECT USERS Length ', this.projectUsersLength);
+      }
+    }, error => {
+      console.log('UserEditAddComponent PROJECT USERS - ERROR', error);
+    }, () => {
+      console.log('UserEditAddComponent PROJECT USERS - COMPLETE');
+    });
+  }
+
+  getProjectPlan() {
+    this.subscription = this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+      console.log('UserEditAddComponent - project Profile Data', projectProfileData)
+      if (projectProfileData) {
+
+        this.projectPlanAgentsNo = projectProfileData.profile_agents;
+        console.log('UserEditAddComponent projectPlanAgentsNo ', this.projectPlanAgentsNo);
+        this.prjct_profile_type = projectProfileData.profile_type;
+        console.log('UserEditAddComponent prjct_profile_type ', this.prjct_profile_type);
+        this.subscription_is_active = projectProfileData.subscription_is_active;
+
+
+        this.subscription_end_date = projectProfileData.subscription_end_date
+
+        this.prjct_profile_name = this.buildPlanName(projectProfileData.profile_name, this.browserLang, this.prjct_profile_type);
+      }
+    })
+  }
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
+
+
+  // NOTE: IF THE PLAN IS OF FREE TYPE IN THE USER INTERFACE THE MODAL 'YOU SUBSCRIPTION HAS EXPIRED' IS NOT DISPLAYED
+  buildPlanName(planName: string, browserLang: string, planType: string) {
+    console.log('StaticPageBaseComponent planName ', planName, ' browserLang  ', browserLang);
+
+    if (planType === 'payment') {
+      if (browserLang === 'it') {
+        this.prjct_profile_name = 'Piano ' + planName;
+        return this.prjct_profile_name
+      } else if (browserLang !== 'it') {
+        this.prjct_profile_name = planName + ' Plan';
+        return this.prjct_profile_name
+      }
+    }
+  }
+
+  getMoreOperatorsSeats() {
+    this.notify._displayContactUsModal(true, 'upgrade_plan');
+  }
+
+  openModalSubsExpired() {
+    this.notify.displaySubscripionHasExpiredModal(true, this.prjct_profile_name, this.subscription_end_date);
+  }
+
+  getPendingInvitation() {
+    this.usersService.getPendingUsers()
+      .subscribe((pendingInvitation: any) => {
+        console.log('USER COMP - GET PENDING INVITATION ', pendingInvitation);
+
+        if (pendingInvitation) {
+          this.countOfPendingInvites = pendingInvitation.length
+          console.log('USER COMP - # OF PENDING INVITATION ', this.countOfPendingInvites);
+        }
+
+      }, error => {
+
+        console.log('USER COMP - GET PENDING INVITATION - ERROR', error);
+      }, () => {
+        console.log('USER COMP - GET PENDING INVITATION - COMPLETE');
+      });
 
   }
 
@@ -146,13 +251,13 @@ export class UserEditAddComponent implements OnInit {
   // setSelectedRole() {
   //   console.log('setSelected Selected ROLE ', this.selectedRole)
   // }
-    
+
 
   emailChange(event) {
-    console.log('!!!!! INVITE THE USER - EDITING EMAIL ', event);
+    // console.log('!!!!! INVITE THE USER - EDITING EMAIL ', event);
 
     this.EMAIL_IS_VALID = this.validateEmail(event)
-    console.log('!!!!! INVITE THE USER - EMAIL IS VALID ', this.EMAIL_IS_VALID);
+    // console.log('!!!!! INVITE THE USER - EMAIL IS VALID ', this.EMAIL_IS_VALID);
   }
 
   validateEmail(email) {
@@ -163,7 +268,28 @@ export class UserEditAddComponent implements OnInit {
   }
 
   invite() {
-    // show the modal windows
+    console.log('INVITE USER No of Project Users ', this.projectUsersLength)
+    console.log('INVITE USER No of Pending Invites ', this.countOfPendingInvites)
+    console.log('INVITE USER No of Operators Seats (agents purchased)', this.projectPlanAgentsNo)
+    console.log('INVITE USER No of PROJECT PROFILE TYPE ', this.prjct_profile_type)
+
+
+    if (this.prjct_profile_type === 'payment') {
+      if ((this.projectUsersLength + this.countOfPendingInvites) < this.projectPlanAgentsNo) {
+        this.doInviteUser();
+      } else {
+        this.notify._displayContactUsModal(true, 'operators_seats_unavailable');
+      }
+
+      /* IN THE "FREE TYPE PLAN" THERE ISN'T LIMIT TO THE NUMBER OF INVITED USER */
+    } else {
+
+      this.doInviteUser();
+
+    }
+  }
+
+  doInviteUser() {
     this.display = 'block';
 
     this.SHOW_CIRCULAR_SPINNER = true
@@ -174,9 +300,23 @@ export class UserEditAddComponent implements OnInit {
 
     console.log('INVITE THE USER EMAIL ', this.user_email)
     console.log('INVITE THE USER ROLE ', this.role)
+    
+    if (this.role === 'ROLE_NOT_SELECTED') {
+      this.role = ''
+
+    }
 
     this.usersService.inviteUser(this.user_email, this.role).subscribe((project_user: any) => {
       console.log('INVITE USER - POST SUBSCRIPTION PROJECT-USER ', project_user);
+
+      // HANDLE THE ERROR "Pending Invitation already exist"
+      if (project_user.success === false && project_user.msg === 'Pending Invitation already exist.') {
+
+        this.PENDING_INVITATION_ALREADY_EXIST = true;
+        console.log('INVITE USER SUCCESS = FALSE ', project_user.msg, ' PENDING_INVITATION_ALREADY_EXIST', this.PENDING_INVITATION_ALREADY_EXIST);
+      } else {
+        this.PENDING_INVITATION_ALREADY_EXIST = false;
+      }
 
     }, (error) => {
       console.log('INVITE USER  ERROR ', error);
@@ -190,6 +330,7 @@ export class UserEditAddComponent implements OnInit {
         this.INVITE_YOURSELF_ERROR = true;
         this.INVITE_USER_ALREADY_MEMBER_ERROR = false;
         this.INVITE_USER_NOT_FOUND = false;
+        this.PENDING_INVITATION_ALREADY_EXIST = false;
 
       } else if ((invite_errorbody['success'] === false) && (invite_errorbody['code'] === 4001)) {
         console.log('!!! Forbidden, user is already a member')
@@ -197,12 +338,14 @@ export class UserEditAddComponent implements OnInit {
         this.INVITE_YOURSELF_ERROR = false;
         this.INVITE_USER_ALREADY_MEMBER_ERROR = true;
         this.INVITE_USER_NOT_FOUND = false;
+        this.PENDING_INVITATION_ALREADY_EXIST = false;
 
       } else if ((invite_errorbody['success'] === false) && (error['status'] === 404)) {
         console.log('!!! USER NOT FOUND ')
         this.INVITE_YOURSELF_ERROR = false;
         this.INVITE_USER_ALREADY_MEMBER_ERROR = false;
         this.INVITE_USER_NOT_FOUND = true;
+        this.PENDING_INVITATION_ALREADY_EXIST = false;
 
       } else if (invite_errorbody['success'] === false) {
 
@@ -210,6 +353,7 @@ export class UserEditAddComponent implements OnInit {
         this.INVITE_USER_ALREADY_MEMBER_ERROR = false;
         this.INVITE_USER_NOT_FOUND = false;
         this.INVITE_OTHER_ERROR = true;
+        this.PENDING_INVITATION_ALREADY_EXIST = false;
 
       }
     }, () => {
@@ -218,6 +362,10 @@ export class UserEditAddComponent implements OnInit {
       this.INVITE_OTHER_ERROR = false;
       this.INVITE_USER_ALREADY_MEMBER_ERROR = false;
       this.INVITE_USER_NOT_FOUND = false;
+      // this.PENDING_INVITATION_ALREADY_EXIST = false;
+
+      this.getAllUsersOfCurrentProject();
+      this.getPendingInvitation();
 
       // WHEN AN USER CLICK ON INVITE DISABLE THE BTN INVITE
       // this.ROLE_NOT_SELECTED = true;
@@ -227,10 +375,11 @@ export class UserEditAddComponent implements OnInit {
 
   onCloseModalHandled() {
     console.log('CONTINUE PRESSED ');
-    console.log('CONTINUE PRESSED Selected ROLE ', this.role);
+    // console.log('CONTINUE PRESSED Selected ROLE ', this.role);
     // this.role = 'ROLE_NOT_SELECTED';
     this.selectedRole = 'ROLE_NOT_SELECTED';
     this.user_email = '';
+    this.role = '';
     this.display = 'none';
 
     // this.router.navigate(['project/' + this.id_project + '/users']);

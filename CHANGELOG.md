@@ -1,6 +1,67 @@
 
 # tiledesk-dashboard
 
+### 1.0.40
+- Fixes the user profile urls
+
+### 1.0.39
+- Minor improvements
+
+### 1.0.38
+- Changes the url of the widget live test page
+- Adds in the sidebar the link to "Tiledesk changelog" blog
+
+
+### 1.0.37
+- Improves the project settings page organizing the contents in tabs and adding info
+- Adds a "SAVE" buttons on top of the widget settings pages 
+- Fixes the issue of saving the widget setting
+- Improves the widget live test page
+
+### 1.0.36
+- Adds a two step wizard (create project and install widget) after the sign up
+- Adds the list of recent projects in the navbar "project" dropdown menu 
+- Adds save button to widget settings
+- Improves graphics of the widget settings pages
+- Adds help page to improve new users pending invitations workflow
+- Fixes minor bugs
+
+### 1.0.35
+- Fixes minor bugs
+
+### 1.0.34
+- Adds Pricing
+
+### 1.0.33
+- Fixes minor bugs
+
+### 1.0.32
+- Implements the new FAQ services
+
+### 1.0.31
+- Adds in Analytics the graphs: "Requests per hour of day", "Median Response Time", "Median Conversation Lenght"
+- Adds in Analytics' graph "Number of requests last 7 days" the ability to filter by time range and project's departments
+
+### 1.0.30
+- Minor improvements
+
+### 1.0.29
+- Fixes the widget url
+
+### 1.0.28
+- Adds the chat widget
+- Adds the ability to revoke a pending invitation
+
+### 1.0.26
+- Adds the "Train bot" slide-out panel in request's details and in the bot test page
+- Fixes the link in the home page "Get The Mobile App"
+
+### 1.0.24
+- Improves the chat in the request's detail page
+
+### 1.0.23
+- Fixes minor bugs
+
 ### 1.0.22
 - Adds the ability to view the request details by clicking on the in app notifications
 - Adds the button "delete contact" in the contact details page

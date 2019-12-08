@@ -1,3 +1,4 @@
+// tslint:disable:max-line-length
 import { Injectable } from '@angular/core';
 import { Router, NavigationEnd, NavigationStart, ActivatedRoute } from '@angular/router';
 
@@ -41,6 +42,7 @@ const superusers = [
 import * as firebase from 'firebase';
 import 'firebase/messaging';
 import 'firebase/database'
+import { AppConfigService } from '../services/app-config.service';
 // import firebase from '@firebase/app';
 // import '@firebase/messaging';
 // import '@firebase/database';
@@ -52,7 +54,9 @@ export class AuthService {
   SIGNIN_BASE_URL = environment.mongoDbConfig.SIGNIN_BASE_URL;
   FIREBASE_SIGNIN_BASE_URL = environment.mongoDbConfig.FIREBASE_SIGNIN_BASE_URL;
   VERIFY_EMAIL_BASE_URL = environment.mongoDbConfig.VERIFY_EMAIL_BASE_URL;
-  CLOUDFUNCTION_CREATE_CONTACT_URL = environment.cloudFunctions.cloud_func_create_contact_url;
+
+  CLOUDFUNCTION_CREATE_CONTACT_URL: any;
+  // CLOUDFUNCTION_CREATE_CONTACT_URL = environment.cloudFunctions.cloud_func_create_contact_url;
 
   // public version: string = require('../../../package.json').version;
   public version: string = environment.VERSION;
@@ -93,11 +97,12 @@ export class AuthService {
     private notify: NotifyService,
     private usersLocalDbService: UsersLocalDbService,
     private route: ActivatedRoute,
-    public location: Location
+    public location: Location,
+    public appConfigService: AppConfigService
   ) {
     this.http = http;
     console.log('version (AuthService)  ', this.version);
-
+    console.log('!!! ====== AUTH SERVICE ====== !!!')
     this.APP_IS_DEV_MODE = isDevMode();
     console.log('!!! ====== AUTH SERVICE !!! ====== isDevMode ', this.APP_IS_DEV_MODE)
     // this.user = this.afAuth.authState
@@ -122,55 +127,27 @@ export class AuthService {
     // const messaging = firebase.messaging();
 
     this.checkIfFCMIsSupported();
-
     this.checkIfExpiredSessionModalIsOpened();
-    this.detectNavigationStart();
-    // this.detectAnalyticsRoute();
+
+    console.log('% appConfigService.getConfig().firebase ', appConfigService.getConfig().firebase)
+    // const firebase_conf = JSON.parse(appConfigService.getConfig().firebase);
+    const firebase_conf = appConfigService.getConfig().firebase;
+
+    // console.log('nk --> AuthService firebase_conf ', firebase_conf);
+    const cloudBaseUrl = firebase_conf['chat21ApiUrl'];
+    // console.log('nk --> AuthService cloudBaseUrl ', cloudBaseUrl);
+    this.CLOUDFUNCTION_CREATE_CONTACT_URL = cloudBaseUrl + '/api/tilechat/contacts';
+    console.log('nk --> AuthService cloudFunctions.cloud_func_create_contact_url ', this.CLOUDFUNCTION_CREATE_CONTACT_URL);
+
   }
 
   public checkTrialExpired(): Promise<boolean> {
-
+    // this.getProjectById();
     return new Promise<boolean>((resolve, reject) => {
-      // tslint:disable-next-line:max-line-length
-      console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD) called checkTrialExpired! TRIAL EXPIRED ', this.project_trial_expired);
-      // if (this.project_trial_expired === undefined) {
-      //   console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD) called checkTrialExpired nav_project_id ', this.nav_project_id);
-      //   const storedProjectJson = localStorage.getItem(this.nav_project_id);
-      //   const storedProjectObject = JSON.parse(storedProjectJson);
-      //   this.project_trial_expired = storedProjectObject['trial_expired'];
-      //   // tslint:disable-next-line:max-line-length
-      //   console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD checkStoredProjectAndPublish TRIAL EXSPIRED', this.project_trial_expired);
-      // }
 
-      setTimeout(() => { }, 300)
+      // console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH SERV) called checkTrialExpired! TRIAL EXPIRED ', this.project_trial_expired);
+      console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH SERV) called checkTrialExpired!');
       resolve(this.project_trial_expired);
-
-    });
-  }
-
-  detectNavigationStart() {
-    console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD) detectNavigationStart ');
-    this.router.events.subscribe((val) => {
-      // console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD) detectNavigationStart ** val ** ');
-      this.router.events.filter((event: any) => event instanceof NavigationStart)
-        .subscribe(event => {
-          // console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD) detectNavigationStart event.url', event.url);
-          const url_spiltted = event.url.split('/');
-          // console.log('»> »> PROJECT-PROFILE GUARD url_spiltted', url_spiltted);
-          this.URL_last_fragment = url_spiltted[3];
-          // console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD) detectNavigationStart URL_last_fragment ', this.URL_last_fragment);
-        });
-    })
-  }
-
-  public checkRoute(): Promise<string> {
-
-    return new Promise<string>((resolve, reject) => {
-      // tslint:disable-next-line:max-line-length
-      // console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD) called checkRoute URL last fragment ', this.URL_last_fragment);
-
-      setTimeout(() => { }, 300)
-      resolve(this.URL_last_fragment);
 
     });
   }
@@ -188,7 +165,6 @@ export class AuthService {
     }
   }
 
-
   // USED ONLY FOR A TEST
   getParamsProjectId() {
     this.route.params.subscribe((params) => {
@@ -197,7 +173,7 @@ export class AuthService {
   }
 
 
-  // RECEIVE THE the project (name,  id, profile_name and trial_expired) AND PUBLISHES
+  // RECEIVE THE the project (name, id, profile_name, trial_expired and trial_days_left) AND PUBLISHES
   projectSelected(project: Project) {
     // PUBLISH THE project
     console.log('!!C-U AUTH SERVICE: I PUBLISH THE PROJECT RECEIVED FROM PROJECT COMP ', project)
@@ -205,7 +181,6 @@ export class AuthService {
     // debugger
     this.project_bs.next(project);
   }
-
 
   /**
    * // REPLACE getProjectFromLocalStorage()
@@ -219,13 +194,13 @@ export class AuthService {
   // getAndPublish_NavProjectIdAndProjectName() {
   checkStoredProjectAndPublish() {
     this.project_bs.subscribe((prjct) => {
-
+      console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH SERV checkStoredProjectAndPublish) prjct', prjct);
       console.log('!!C-U  - 1) »»»»» AUTH SERV - PROJECT FROM SUBSCRIP', prjct);
 
-      if (prjct !== null && prjct.id_project !== undefined) {
-        this.project_trial_expired = prjct.id_project.trialExpired
+      if (prjct !== null && prjct._id !== undefined) {
+        this.project_trial_expired = prjct.trial_expired;
         // tslint:disable-next-line:max-line-length
-        console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD checkStoredProjectAndPublish) TRIAL expired 1', this.project_trial_expired);
+        console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH SERV checkStoredProjectAndPublish) TRIAL expired 1', this.project_trial_expired);
       }
 
       if (prjct === null) {
@@ -250,13 +225,16 @@ export class AuthService {
             console.log('!! »»»»» AUTH SERV - CURRENT URL SEGMENTS > NAVIGATION PROJECT ID: ', this.nav_project_id);
             console.log('!! »»»»» AUTH SERV - CURRENT URL SEGMENTS > SEGMENT 1: ', url_segments[1]);
 
-            /*
+            /**
              * (note: the NAVIGATION PROJECT ID returned from CURRENT URL SEGMENTS is = to 'email'
              * if the user navigate to the e-mail verification page)
              * the url_segments[1] is = to 'user' instead of 'project' when the user not yet has select a project
              * (i.e. from the project list page) and go to user profile > change password
-             * */
-            if (this.nav_project_id && this.nav_project_id !== 'email' && url_segments[1] !== 'user') {
+             * If the CURRENT URL has only one element (for example /create-project (i.e. the wizard for the creation a of a project) 
+             * the url_segments[2] (that is the project id) is undefined)
+             * and the Workflow not proceed with the below code
+             */
+            if (this.nav_project_id && this.nav_project_id !== 'email' && url_segments[1] !== 'user' && url_segments[1] !== 'handle-invitation' && url_segments[1] !== 'signup-on-invitation') {
 
               console.log('!!C-U »»»»» QUI ENTRO ', this.nav_project_id);
               this.subscription.unsubscribe();
@@ -273,10 +251,11 @@ export class AuthService {
                 const project_name = storedProjectObject['name'];
                 const project_profile_name = storedProjectObject['profile_name'];
                 const project_trial_expired = storedProjectObject['trial_expired'];
+                const project_trial_days_left = storedProjectObject['trial_days_left'];
 
-               this.project_trial_expired = storedProjectObject['trial_expired'];
-               // tslint:disable-next-line:max-line-length
-               console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH GUARD checkStoredProjectAndPublish) TRIAL expired 2', this.project_trial_expired);
+                this.project_trial_expired = storedProjectObject['trial_expired'];
+                // tslint:disable-next-line:max-line-length
+                // console.log('»> »> PROJECT-PROFILE GUARD (WF in AUTH SERV checkStoredProjectAndPublish) TRIAL expired 2', this.project_trial_expired);
 
                 console.log('!! »»»»» AUTH SERV - PROJECT NAME GET FROM STORAGE: ', project_name);
 
@@ -284,9 +263,10 @@ export class AuthService {
                   _id: this.nav_project_id,
                   name: project_name,
                   profile_name: project_profile_name,
-                  trial_expired: project_trial_expired
+                  trial_expired: project_trial_expired,
+                  trial_days_left: project_trial_days_left
                 }
-                console.log('!!C-U »»»»» AUTH SERV - 1) PROJECT THAT IS PUBLISHED: ', project);
+                console.log('!! AUTH in auth.serv  - 1) PROJECT THAT IS PUBLISHED: ', project);
                 // SE NN C'è IL PROJECT NAME COMUNQUE PUBBLICO PERCHè CON L'ID DEL PROGETTO VENGONO EFFETTUATE DIVERSE CALLBACK
 
                 /**** ******* ******* ***** *** ** ***/
@@ -305,7 +285,8 @@ export class AuthService {
                 // IF THE STORED JSON OF THE PROJECT IS NULL  IS THE AUTH-GUARD THAT RUNS A REMOTE CALLBACK TO OBTAIN THE
                 // PROJECT BY ID AND THAT THEN PUBLISH IT AND SAVE IT (THE REMOTE CALLBACK IS PERFORMED IN AUTH-GUARD BECAUSE
                 // IS NOT POSSIBLE TO DO IT IN THIS SERVICE (BECAUSE OF THE CIRCULAR DEPEDENCY WARNING)  )
-                console.log('!! »»» AUTH SERV - FOR THE PRJCT ID ', this.nav_project_id, ' THERE IS NOT STORED PRJCT-JSON - SEE AUTH GUARD')
+                // tslint:disable-next-line:max-line-length
+                console.log('!! AUTH WF in auth.serv - FOR THE PRJCT ID ', this.nav_project_id, ' THERE IS NOT STORED PRJCT-JSON - SEE AUTH GUARD')
                 // this.projectService.getProjectById(this.nav_project_id).subscribe((prjct: any) => {
 
                 // public anyway to immediately make the project id available to subscribers
@@ -313,7 +294,7 @@ export class AuthService {
                 const project: Project = {
                   _id: this.nav_project_id,
                 }
-                console.log('!! »»»»» AUTH SERV - 2) PROJECT THAT IS PUBLISHED: ', project);
+                console.log('!! AUTH in auth.serv - 2) PROJECT THAT IS PUBLISHED: ', project);
                 this.project_bs.next(project);
               }
             }
@@ -322,8 +303,6 @@ export class AuthService {
       }
     });
   }
-
-
 
 
   checkRoleForCurrentProject() {
@@ -380,9 +359,9 @@ export class AuthService {
     // console.log('USER BS VALUE', this.user_bs.value)
     if (storedUser !== null) {
 
-      /**
-       * *** WIDGET - pass data to the widget function setTiledeskWidgetUser in index.html ***
-       */
+      // /**
+      //  * *** WIDGET - pass data to the widget function setTiledeskWidgetUser in index.html ***
+      //  */
       // const _storedUser = JSON.parse(storedUser);
       // console.log('SetTiledeskWidgetUserSignin (AUTH-SERVICE) - storedUser', _storedUser)
       // const userFullname = _storedUser['firstname'] + ' ' + _storedUser['lastname'];
@@ -392,7 +371,7 @@ export class AuthService {
       // const userId = _storedUser['_id']
       // console.log('SetTiledeskWidgetUserSignin (AUTH-SERVICE) - userId', userId);
       // console.log('SetTiledeskWidgetUserSignin (AUTH-SERVICE) - window', window);
-      // window['setTiledeskWidgetUser'](userFullname, userEmail, userId)
+      // // window['setTiledeskWidgetUser'](userFullname, userEmail, userId)
 
 
       this.user_bs.next(JSON.parse(storedUser));
@@ -473,6 +452,8 @@ export class AuthService {
 
         // ASSIGN THE RETURNED TOKEN TO THE USER OBJECT
         user.token = jsonRes.token
+
+
 
         // PUBLISH THE USER OBJECT
         this.user_bs.next(user);
@@ -650,7 +631,10 @@ export class AuthService {
           .post(url, JSON.stringify(body), options)
           .toPromise().then(res => {
             console.log('Cloud Functions Create Contact RES ', res)
-          });
+          }).catch(function (error) {
+            // Handle error
+            console.log('Cloud Functions Create Contact RES ERROR', error);
+          })
 
       }).catch(function (error) {
         // Handle error
@@ -872,6 +856,7 @@ export class AuthService {
   }
 
   firebaseSignout() {
+
     this.user_bs.next(null);
     this.project_bs.next(null);
 
@@ -883,9 +868,11 @@ export class AuthService {
     firebase.auth().signOut()
       .then(function () {
         console.log('Signed Out');
+        that.widgetReInit()
         that.router.navigate(['/login']);
       }, function (error) {
         console.error('Sign Out Error', error);
+        that.widgetReInit()
         that.router.navigate(['/login']);
       });
   }
@@ -894,6 +881,18 @@ export class AuthService {
   private handleError(error: Error) {
     console.error(error);
     this.notify.update(error.message, 'error');
+  }
+
+  widgetReInit() {
+    if (window && window['tiledesk']) {
+      console.log('AUTH-SERVICE   window[-tiledesk ', window['tiledesk'])
+      try {
+        window['tiledesk'].reInit();
+      } catch (err) {
+        console.log('AUTH-SERVICE  widgetReInit error ', err);
+      }
+      // alert('logout');
+    }
   }
 
 }

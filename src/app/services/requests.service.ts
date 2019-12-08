@@ -18,10 +18,11 @@ import { DepartmentService } from '../services/mongodb-department.service';
 import { UsersService } from '../services/users.service';
 import { environment } from '../../environments/environment';
 
+
 import * as firebase from 'firebase';
 import 'firebase/firestore';
 // import { QuerySnapshot, DocumentChange, DocumentSnapshot } from '@firebase/firestore-types';
-
+import { AppConfigService } from '../services/app-config.service';
 @Injectable()
 export class RequestsService {
 
@@ -30,8 +31,10 @@ export class RequestsService {
   // messageCollection: AngularFirestoreCollection<Message>;
 
   http: Http;
-  CHAT21_CLOUD_FUNCTIONS_BASE_URL = environment.cloudFunctions.cloud_functions_base_url;
-  CHAT21_CLOUD_FUNC_CLOSE_GROUP_BASE_URL = environment.cloudFunctions.cloud_func_close_support_group_base_url
+  CHAT21_CLOUD_FUNCTIONS_BASE_URL: any;
+  // CHAT21_CLOUD_FUNCTIONS_BASE_URL = environment.cloudFunctions.cloud_functions_base_url;
+  CHAT21_CLOUD_FUNC_CLOSE_GROUP_BASE_URL: any
+  // CHAT21_CLOUD_FUNC_CLOSE_GROUP_BASE_URL = environment.cloudFunctions.cloud_func_close_support_group_base_url
   // FIREBASE_ID_TOKEN = environment.cloudFunctions.firebase_IdToken;
   FIREBASE_ID_TOKEN: any;
 
@@ -60,13 +63,14 @@ export class RequestsService {
   _seeOnlyRequestsHaveCurrentUserAsAgent = false
 
   project: Project;
-  constructor(
 
+  constructor(
     http: Http,
     // private afs: AngularFirestore,
     public auth: AuthService,
     private departmentService: DepartmentService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    public appConfigService: AppConfigService
   ) {
 
     console.log('SEE REQUEST IM AGENT (REQUESTS SERVICE - ON INIT) ', this._seeOnlyRequestsHaveCurrentUserAsAgent)
@@ -95,8 +99,23 @@ export class RequestsService {
     });
 
     this.getCurrentProject();
-    // !! NO MORE USED
-    // this.getMyDepts();
+    
+    // this.getMyDepts(); // !! NO MORE USED
+
+    // const firebase_conf = JSON.parse(appConfigService.getConfig().firebase);
+    const firebase_conf = appConfigService.getConfig().firebase;
+    // console.log('nk --> RequestsService firebase_conf ', firebase_conf);
+    const cloudBaseUrl = firebase_conf['chat21ApiUrl']
+    // console.log('nk --> RequestsService cloudBaseUrl ', cloudBaseUrl);
+
+    this.CHAT21_CLOUD_FUNCTIONS_BASE_URL = cloudBaseUrl + '/api/tilechat/groups/'
+    console.log('nk --> RequestsService cloudFunctions.cloud_functions_base_url', this.CHAT21_CLOUD_FUNCTIONS_BASE_URL);
+
+
+    // this.CHAT21_CLOUD_FUNC_CLOSE_GROUP_BASE_URL = cloudBaseUrl + '/support/tilechat/groups/'
+    this.CHAT21_CLOUD_FUNC_CLOSE_GROUP_BASE_URL = cloudBaseUrl + '/supportapi/tilechat/groups/'
+    console.log('nk --> RequestsService cloud_func_close_support_group_base_url ', this.CHAT21_CLOUD_FUNC_CLOSE_GROUP_BASE_URL);
+
   }
 
   getProjectUserRole() {
@@ -180,6 +199,7 @@ export class RequestsService {
       });
       // PUBLISH THE REQUESTS LIST (ORDERED AND WITH THE CHANGES MANAGED BY addOrUpdateRequestsList)
       this.requestsList_bs.next(this.requestList);
+      
       console.log('!!! REQUESTS-SERVICE PUBLISH REQUEST LIST ', this.requestList);
 
       this.allRequestsList_bs.next(this.allRequestList);
@@ -189,6 +209,8 @@ export class RequestsService {
     }, () => {
       console.log('GET REQUEST * COMPLETE')
     });
+
+
   }
 
   seeOnlyRequestsHaveCurrentUserAsAgent(seeIamAgentReq) {
@@ -455,6 +477,7 @@ export class RequestsService {
           m.recipient = data.recipient;
           m.recipient_fullname = data.recipient_fullname;
           m.sender_fullname = data.sender_fullname;
+          m.sender = data.sender;
           m.text = data.text;
           m.timestamp = data.timestamp;
 
@@ -547,16 +570,17 @@ export class RequestsService {
     // .map((res) => res.json());
   }
 
+  // -------------MOVE TO ANALYTICS SERVICE----------------------
   public requestsByDay() {
     // USED TO TEST (note: this service doesn't work in localhost)
-    // const url = 'https://api.tiledesk.com/v1/' + '5ba35f0b9acdd40015d350b6' + '/analytics/requests/aggregate/day';
+    // const url = 'https://api.tiledesk.com/v1/' + '5c28b587348b680015feecca' + '/analytics/requests/aggregate/day';
     const url = this.BASE_URL + this.project._id + '/analytics/requests/aggregate/day';
     console.log('!!! ANALYTICS - REQUESTS BY DAY - URL ', url);
 
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
     // USED TO TEST (note: this service doesn't work in localhost)
-    // headers.append('Authorization', 'JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwic2VsZWN0ZWQiOnsiZW1haWwiOjEsImZpcnN0bmFtZSI6MSwibGFzdG5hbWUiOjEsInBhc3N3b3JkIjoxLCJlbWFpbHZlcmlmaWVkIjoxLCJpZCI6MX0sImdldHRlcnMiOnt9LCJfaWQiOiI1YWM3NTIxNzg3ZjZiNTAwMTRlMGI1OTIiLCJ3YXNQb3B1bGF0ZWQiOmZhbHNlLCJhY3RpdmVQYXRocyI6eyJwYXRocyI6eyJwYXNzd29yZCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJlbWFpbHZlcmlmaWVkIjoiaW5pdCIsImxhc3RuYW1lIjoiaW5pdCIsImZpcnN0bmFtZSI6ImluaXQiLCJfaWQiOiJpbml0In0sInN0YXRlcyI6eyJpZ25vcmUiOnt9LCJkZWZhdWx0Ijp7fSwiaW5pdCI6eyJlbWFpbHZlcmlmaWVkIjp0cnVlLCJsYXN0bmFtZSI6dHJ1ZSwiZmlyc3RuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiZW1haWwiOnRydWUsIl9pZCI6dHJ1ZX0sIm1vZGlmeSI6e30sInJlcXVpcmUiOnt9fSwic3RhdGVOYW1lcyI6WyJyZXF1aXJlIiwibW9kaWZ5IiwiaW5pdCIsImRlZmF1bHQiLCJpZ25vcmUiXX0sInBhdGhzVG9TY29wZXMiOnt9LCJlbWl0dGVyIjp7ImRvbWFpbiI6bnVsbCwiX2V2ZW50cyI6e30sIl9ldmVudHNDb3VudCI6MCwiX21heExpc3RlbmVycyI6MH0sIiRvcHRpb25zIjp0cnVlfSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImVtYWlsdmVyaWZpZWQiOnRydWUsImxhc3RuYW1lIjoiTGFuemlsb3R0byIsImZpcnN0bmFtZSI6Ik5pY29sYSIsInBhc3N3b3JkIjoiJDJhJDEwJDEzZlROSnA3OUx5RVYvdzh6NXRrbmVrc3pYRUtuaWFxZm83TnR2aTZpSHdaQ2ZLRUZKd1kuIiwiZW1haWwiOiJuaWNvbGEubGFuemlsb3R0b0Bmcm9udGllcmUyMS5pdCIsIl9pZCI6IjVhYzc1MjE3ODdmNmI1MDAxNGUwYjU5MiJ9LCIkaW5pdCI6dHJ1ZSwiaWF0IjoxNTM3MjkxNzcwfQ.dxovfEleb6I33rtWObY8SwyjfMVfaY7vXwHvQDeNTEY');
+    // headers.append('Authorization', 'JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwic2VsZWN0ZWQiOnsiZW1haWwiOjEsImZpcnN0bmFtZSI6MSwibGFzdG5hbWUiOjEsInBhc3N3b3JkIjoxLCJlbWFpbHZlcmlmaWVkIjoxLCJpZCI6MX0sImdldHRlcnMiOnt9LCJfaWQiOiI1YzI4YjU0ODM0OGI2ODAwMTVmZWVjYzkiLCJ3YXNQb3B1bGF0ZWQiOmZhbHNlLCJhY3RpdmVQYXRocyI6eyJwYXRocyI6eyJwYXNzd29yZCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJlbWFpbHZlcmlmaWVkIjoiaW5pdCIsImxhc3RuYW1lIjoiaW5pdCIsImZpcnN0bmFtZSI6ImluaXQiLCJfaWQiOiJpbml0In0sInN0YXRlcyI6eyJpZ25vcmUiOnt9LCJkZWZhdWx0Ijp7fSwiaW5pdCI6eyJlbWFpbHZlcmlmaWVkIjp0cnVlLCJsYXN0bmFtZSI6dHJ1ZSwiZmlyc3RuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiZW1haWwiOnRydWUsIl9pZCI6dHJ1ZX0sIm1vZGlmeSI6e30sInJlcXVpcmUiOnt9fSwic3RhdGVOYW1lcyI6WyJyZXF1aXJlIiwibW9kaWZ5IiwiaW5pdCIsImRlZmF1bHQiLCJpZ25vcmUiXX0sInBhdGhzVG9TY29wZXMiOnt9LCJlbWl0dGVyIjp7Il9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9LCIkb3B0aW9ucyI6dHJ1ZX0sImlzTmV3IjpmYWxzZSwiX2RvYyI6eyJlbWFpbHZlcmlmaWVkIjp0cnVlLCJsYXN0bmFtZSI6IlBhbmljbyIsImZpcnN0bmFtZSI6IkdhYnJpZWxlIiwicGFzc3dvcmQiOiIkMmEkMTAkMUJ0b0xEVmJFaDU5YmhPVlRRckRCT3NoMm8zU3Zlam5aY2VFU0VCZGRFVTc2dDk0d1lIRi4iLCJlbWFpbCI6ImdhYnJpZWxlLnBhbmljbzk1QGdtYWlsLmNvbSIsIl9pZCI6IjVjMjhiNTQ4MzQ4YjY4MDAxNWZlZWNjOSJ9LCIkaW5pdCI6dHJ1ZSwiaWF0IjoxNTU2MjY1MjI0fQ.aJkbYc2D-kMFZR3GgTiGA85sW-ZB5VWrQW7fLNQnICQ');
     headers.append('Authorization', this.TOKEN);
     return this.http
       .get(url, { headers })
@@ -638,13 +662,14 @@ export class RequestsService {
   }
 
 
+  // ******* HISTORY *******
   public getNodeJsHistoryRequests(querystring: string, pagenumber: number) {
     let _querystring = '&' + querystring
     if (querystring === undefined || !querystring) {
       _querystring = ''
     }
     /* *** USED TO TEST IN LOCALHOST (note: this service doen't work in localhost) *** */
-    // const url = 'https://api.tiledesk.com/v1/' + '5ad5bd52c975820014ba900a' + '/requests?status=1000' + _querystring + '&page=' + pagenumber;
+    // const url = 'https://api.tiledesk.com/v1/' + '5af02d8f705ac600147f0cbb' + '/requests?status=1000' + _querystring + '&page=' + pagenumber;
     /* *** USED IN PRODUCTION *** */
     const url = this.BASE_URL + this.project._id + '/requests?status=1000' + _querystring + '&page=' + pagenumber;
 
@@ -653,7 +678,7 @@ export class RequestsService {
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
     /* *** USED TO TEST IN LOCALHOST (note: this service doesn't work in localhost) *** */
-    // headers.append('Authorization', 'JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwic2VsZWN0ZWQiOnsiZW1haWwiOjEsImZpcnN0bmFtZSI6MSwibGFzdG5hbWUiOjEsInBhc3N3b3JkIjoxLCJlbWFpbHZlcmlmaWVkIjoxLCJpZCI6MX0sImdldHRlcnMiOnt9LCJfaWQiOiI1YWM3NTIxNzg3ZjZiNTAwMTRlMGI1OTIiLCJ3YXNQb3B1bGF0ZWQiOmZhbHNlLCJhY3RpdmVQYXRocyI6eyJwYXRocyI6eyJwYXNzd29yZCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJlbWFpbHZlcmlmaWVkIjoiaW5pdCIsImxhc3RuYW1lIjoiaW5pdCIsImZpcnN0bmFtZSI6ImluaXQiLCJfaWQiOiJpbml0In0sInN0YXRlcyI6eyJpZ25vcmUiOnt9LCJkZWZhdWx0Ijp7fSwiaW5pdCI6eyJlbWFpbHZlcmlmaWVkIjp0cnVlLCJsYXN0bmFtZSI6dHJ1ZSwiZmlyc3RuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiZW1haWwiOnRydWUsIl9pZCI6dHJ1ZX0sIm1vZGlmeSI6e30sInJlcXVpcmUiOnt9fSwic3RhdGVOYW1lcyI6WyJyZXF1aXJlIiwibW9kaWZ5IiwiaW5pdCIsImRlZmF1bHQiLCJpZ25vcmUiXX0sInBhdGhzVG9TY29wZXMiOnt9LCJlbWl0dGVyIjp7ImRvbWFpbiI6bnVsbCwiX2V2ZW50cyI6e30sIl9ldmVudHNDb3VudCI6MCwiX21heExpc3RlbmVycyI6MH0sIiRvcHRpb25zIjp0cnVlfSwiaXNOZXciOmZhbHNlLCJfZG9jIjp7ImVtYWlsdmVyaWZpZWQiOnRydWUsImxhc3RuYW1lIjoiTGFuemlsb3R0byIsImZpcnN0bmFtZSI6Ik5pY29sYSIsInBhc3N3b3JkIjoiJDJhJDEwJDEzZlROSnA3OUx5RVYvdzh6NXRrbmVrc3pYRUtuaWFxZm83TnR2aTZpSHdaQ2ZLRUZKd1kuIiwiZW1haWwiOiJuaWNvbGEubGFuemlsb3R0b0Bmcm9udGllcmUyMS5pdCIsIl9pZCI6IjVhYzc1MjE3ODdmNmI1MDAxNGUwYjU5MiJ9LCIkaW5pdCI6dHJ1ZSwiaWF0IjoxNTUwMDc3Mzg5fQ.temvv0C-EsHNbjgj7p5ZmF_CmjykLaZn8fNhI-_tV0M');
+    // headers.append('Authorization', 'JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwic2VsZWN0ZWQiOnsiZW1haWwiOjEsImZpcnN0bmFtZSI6MSwibGFzdG5hbWUiOjEsInBhc3N3b3JkIjoxLCJlbWFpbHZlcmlmaWVkIjoxLCJpZCI6MX0sImdldHRlcnMiOnt9LCJfaWQiOiI1YWM3NTIxNzg3ZjZiNTAwMTRlMGI1OTIiLCJ3YXNQb3B1bGF0ZWQiOmZhbHNlLCJhY3RpdmVQYXRocyI6eyJwYXRocyI6eyJwYXNzd29yZCI6ImluaXQiLCJlbWFpbCI6ImluaXQiLCJlbWFpbHZlcmlmaWVkIjoiaW5pdCIsImxhc3RuYW1lIjoiaW5pdCIsImZpcnN0bmFtZSI6ImluaXQiLCJfaWQiOiJpbml0In0sInN0YXRlcyI6eyJpZ25vcmUiOnt9LCJkZWZhdWx0Ijp7fSwiaW5pdCI6eyJlbWFpbHZlcmlmaWVkIjp0cnVlLCJsYXN0bmFtZSI6dHJ1ZSwiZmlyc3RuYW1lIjp0cnVlLCJwYXNzd29yZCI6dHJ1ZSwiZW1haWwiOnRydWUsIl9pZCI6dHJ1ZX0sIm1vZGlmeSI6e30sInJlcXVpcmUiOnt9fSwic3RhdGVOYW1lcyI6WyJyZXF1aXJlIiwibW9kaWZ5IiwiaW5pdCIsImRlZmF1bHQiLCJpZ25vcmUiXX0sInBhdGhzVG9TY29wZXMiOnt9LCJlbWl0dGVyIjp7Il9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9LCIkb3B0aW9ucyI6dHJ1ZX0sImlzTmV3IjpmYWxzZSwiX2RvYyI6eyJlbWFpbHZlcmlmaWVkIjp0cnVlLCJsYXN0bmFtZSI6IkxhbnppbG90dG8iLCJmaXJzdG5hbWUiOiJOaWNvIiwicGFzc3dvcmQiOiIkMmEkMTAkTlBoSk5VNVZDYlU2d05idG1Jck5lT3MxR0dBSW5rMERMeGVYWXN2dklHZ1JnY1dMWW1kYkciLCJlbWFpbCI6Im5pY29sYS5sYW56aWxvdHRvQGZyb250aWVyZTIxLml0IiwiX2lkIjoiNWFjNzUyMTc4N2Y2YjUwMDE0ZTBiNTkyIn0sIiRpbml0Ijp0cnVlLCJpYXQiOjE1NjgzMDg2OTl9.sl2zMzVv__5Gc7Xj6TV1lkzxkqnRVMv7-U3YHBbpq20');
     /* *** USED IN PRODUCTION *** */
     headers.append('Authorization', this.TOKEN);
 

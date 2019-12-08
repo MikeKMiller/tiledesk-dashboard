@@ -1,6 +1,21 @@
 <p style="margin-top:6px; padding-left:30px;position: relative;z-index: 1050;" class="navbar-brand">
     Analytics  
 </p>
+
+<!-- 
+<ul class="bottom-nav">
+    <li class="btn-with-border-effect li-active">
+        <a>Panoramica</a>
+    </li>
+    <li class="btn-with-border-effect border-from-center">
+        <a>Metriche</a>
+    </li>
+    <li class="btn-with-border-effect border-from-center">
+        <a>Realtime</a>
+    </li>
+</ul>
+-->
+
 <div class="main-content" style="padding-top:0px">
 
     <div class="container-fluid">
@@ -414,7 +429,7 @@
                                         (click)="goToMemberProfile(member?.id_user?._id)">
                                    
                                         <img style="vertical-align: middle; width: 32px; height: 32px; border-radius: 50%; border: 1px solid #eee; margin-right: 15px;" 
-                                        class="user-img" src="https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F{{member?.id_user?._id}}%2Fphoto.jpg?alt=media" 
+                                        class="user-img" src="https://firebasestorage.googleapis.com/v0/b/{{storageBucket}}/o/profiles%2F{{member?.id_user?._id}}%2Fphoto.jpg?alt=media" 
                                         onerror="this.src='assets/img/no_image_user.png'"/>
     
                                         <!-- <img *ngIf="userProfileImageExist !== true" style="vertical-align: middle; width: 60px; height: 60px; border-radius: 50%; border: 1px solid #eee; margin-right: 15px;" 

@@ -128,7 +128,7 @@ export class RoutingPageComponent implements OnInit {
 
   getDeptsByProjectId() {
     this.mongodbDepartmentService.getDeptsByProjectId().subscribe((departments: any) => {
-      // console.log('ROUTING PAGE - DEPTS (FILTERED FOR PROJECT ID)', departments);
+      console.log('ROUTING PAGE - DEPTS (FILTERED FOR PROJECT ID)', departments);
 
       if (departments) {
         departments.forEach(dept => {

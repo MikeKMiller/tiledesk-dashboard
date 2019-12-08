@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, HostListener } from '@angular/core';
 import { MongodbFaqService } from '../services/mongodb-faq.service';
 import { Faq } from '../models/faq-model';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -9,7 +9,10 @@ import { AuthService } from '../core/auth.service';
 import { Http, Headers, RequestOptions } from '@angular/http';
 import { FaqKbService } from '../services/faq-kb.service';
 import { NotifyService } from '../core/notify.service';
-
+import { Location } from '@angular/common';
+import { Subscription } from 'rxjs';
+import { ProjectPlanService } from '../services/project-plan.service';
+import { TranslateService } from '@ngx-translate/core';
 // import $ = require('jquery');
 // declare const $: any;
 @Component({
@@ -56,13 +59,27 @@ export class FaqComponent implements OnInit {
   faq_lenght: number;
   showSpinner = true;
   is_external_bot: boolean;
+  windowWidthMore764: boolean;
+
+  subscription: Subscription;
+  prjct_profile_type: string;
+  subscription_is_active: any;
+  prjct_profile_name: string;
+  subscription_end_date: Date;
+  trial_expired: boolean;
+  browserLang: string;
+  OPEN_RIGHT_SIDEBAR = false;
+  train_bot_sidebar_height: any;
   constructor(
     private mongodbFaqService: MongodbFaqService,
     private router: Router,
     private route: ActivatedRoute,
     private auth: AuthService,
     private faqKbService: FaqKbService,
-    private notify: NotifyService
+    public location: Location,
+    private notify: NotifyService,
+    private prjctPlanService: ProjectPlanService,
+    private translate: TranslateService
   ) { }
 
   ngOnInit() {
@@ -82,6 +99,64 @@ export class FaqComponent implements OnInit {
     this.getFaqByFaqKbId();
 
     this.getCurrentProject();
+    this.getWindowWidth();
+    this.getProjectPlan();
+    this.getBrowserLang();
+  }
+
+  getBrowserLang() {
+    this.browserLang = this.translate.getBrowserLang();
+  }
+
+  getProjectPlan() {
+    this.subscription = this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+      console.log('ProjectPlanService (RequestsListHistoryNewComponent) project Profile Data', projectProfileData)
+      if (projectProfileData) {
+
+        this.prjct_profile_type = projectProfileData.profile_type;
+        this.subscription_is_active = projectProfileData.subscription_is_active;
+
+        this.subscription_end_date = projectProfileData.subscription_end_date;
+        this.trial_expired = projectProfileData.trial_expired
+
+        this.prjct_profile_name = this.buildPlanName(projectProfileData.profile_name, this.browserLang, this.prjct_profile_type);
+      }
+    })
+  }
+
+  buildPlanName(planName: string, browserLang: string, planType: string) {
+    if (planType === 'payment') {
+      if (browserLang === 'it') {
+        this.prjct_profile_name = 'Piano ' + planName;
+        return this.prjct_profile_name
+      } else if (browserLang !== 'it') {
+        this.prjct_profile_name = planName + ' Plan';
+        return this.prjct_profile_name
+      }
+    }
+  }
+
+  getWindowWidth() {
+    const actualWidth = window.innerWidth;
+    console.log('FaqComponent - ACTUAL WIDTH ', actualWidth);
+
+    if (actualWidth > 764) {
+      this.windowWidthMore764 = true;
+    } else {
+      this.windowWidthMore764 = false;
+    }
+
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: any) {
+    const newInnerWidth = event.target.innerWidth;
+    console.log('FaqComponent - NEW INNER WIDTH ', newInnerWidth);
+    if (newInnerWidth > 764) {
+      this.windowWidthMore764 = true;
+    } else {
+      this.windowWidthMore764 = false;
+    }
   }
 
   /**
@@ -194,8 +269,11 @@ export class FaqComponent implements OnInit {
   }
 
   goToTestFaqPage() {
-    console.log('GO TO TEST FAQ PAGE - REMOTE FAQKB KEY ', this.faq_kb_remoteKey);
-    this.router.navigate(['project/' + this.project._id + '/faq/test', this.faq_kb_remoteKey]);
+    // - REMOTE FAQKB KEY ', this.faq_kb_remoteKey
+    console.log('GO TO TEST FAQ PAGE ');
+    // if (this.faq_kb_remoteKey) {
+    this.router.navigate(['project/' + this.project._id + '/faq/test', this.id_faq_kb]);
+    // }
   }
 
 
@@ -213,8 +291,8 @@ export class FaqComponent implements OnInit {
   }
 
   goBackToFaqKbList() {
-    // this.router.navigate(['project/' + this.project._id + '/faqkb']);
-    this.router.navigate(['project/' + this.project._id + '/bots']);
+    // this.router.navigate(['project/' + this.project._id + '/bots']);
+    this.location.back();
   }
 
   /**
@@ -250,19 +328,23 @@ export class FaqComponent implements OnInit {
   }
 
   exportFaqsToCsv() {
+    // tslint:disable-next-line:max-line-length
+    if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false || this.prjct_profile_type === 'free' && this.trial_expired === true) {
+      this.notify.openDataExportNotAvailable()
+    } else {
+      this.mongodbFaqService.exsportFaqsToCsv(this.id_faq_kb).subscribe((faq: any) => {
+        console.log('FAQ COMP - EXPORT FAQ TO CSV - FAQS', faq)
 
-    this.mongodbFaqService.exsportFaqsToCsv(this.id_faq_kb).subscribe((faq: any) => {
-      console.log('FAQ COMP - EXPORT FAQ TO CSV - FAQS', faq)
+        if (faq) {
+          this.downloadFile(faq, 'faqs.csv');
+        }
+      }, (error) => {
+        console.log('FAQ COMP - EXPORT FAQ TO CSV - ERROR', error);
 
-      if (faq) {
-        this.downloadFile(faq, 'faqs.csv');
-      }
-    }, (error) => {
-      console.log('FAQ COMP - EXPORT FAQ TO CSV - ERROR', error);
-
-    }, () => {
-      console.log('FAQ COMP - EXPORT FAQ TO CSV - COMPLETE');
-    });
+      }, () => {
+        console.log('FAQ COMP - EXPORT FAQ TO CSV - COMPLETE');
+      });
+    }
   }
 
   //   var link = document.createElement("a");
@@ -523,6 +605,28 @@ export class FaqComponent implements OnInit {
           }, 300);
         });
 
+    }
+  }
+
+  openRightSidebar() {
+
+    this.OPEN_RIGHT_SIDEBAR = true;
+    const elemMainContent = <HTMLElement>document.querySelector('.main-content');
+    this.train_bot_sidebar_height = elemMainContent.clientHeight + 10 + 'px'
+    console.log('FaqComponent - ON OPEN RIGHT SIDEBAR -> RIGHT SIDEBAR HEIGHT', this.train_bot_sidebar_height);
+  }
+
+  closeRightSidebar(event) {
+    console.log('»»»» CLOSE RIGHT SIDEBAR ', event);
+    this.OPEN_RIGHT_SIDEBAR = event;
+
+    // const _elemMainPanel = <HTMLElement>document.querySelector('.main-panel');
+    // _elemMainPanel.setAttribute('style', 'overflow-x: hidden !important;');
+  }
+
+  launchWidget() {
+    if (window && window['tiledesk']) {
+      window['tiledesk'].open();
     }
   }
 

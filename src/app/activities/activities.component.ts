@@ -6,6 +6,8 @@ import { Router } from '@angular/router';
 import * as moment from 'moment';
 import { IMyDpOptions, IMyDateModel } from 'mydatepicker';
 import { UsersLocalDbService } from '../services/users-local-db.service';
+import { BotLocalDbService } from '../services/bot-local-db.service';
+
 import 'moment/locale/it.js';
 import 'moment/locale/en-gb.js';
 @Component({
@@ -51,24 +53,25 @@ export class ActivitiesComponent implements OnInit {
 
   selectedActivities: any;
   arrayOfSelectedActivity: any;
-
   hasAscDirection = false;
-
   activities: any;
   agentAvailabilityOrRoleChange: string;
   agentDeletion: string;
   agentInvitation: string;
   newRequest: string;
   asc: any;
+
   constructor(
     private usersService: UsersService,
     public auth: AuthService,
     private translate: TranslateService,
     private router: Router,
     private usersLocalDbService: UsersLocalDbService,
+    private botLocalDbService: BotLocalDbService
   ) { }
 
   ngOnInit() {
+    this.auth.checkRoleForCurrentProject();
     this.selectedAgentId = '';
     this.getBrowserLanguage();
     this.getCurrentProject();
@@ -354,6 +357,7 @@ export class ActivitiesComponent implements OnInit {
                 activity.date = date;
               }
 
+              // used for the new request
               if (activity && activity.target && activity.target.object && activity.target.object.first_text) {
 
                 console.log('ActivitiesComponent - getActivities - first_text:  ', activity.target.object.first_text);
@@ -375,10 +379,26 @@ export class ActivitiesComponent implements OnInit {
 
                     const participantId = activity.target.object.participants[0]
                     console.log('ActivitiesComponent participant ', participantId);
-                    const user = this.usersLocalDbService.getMemberFromStorage(participantId);
-                    console.log('ActivitiesComponent participant - user', user);
 
-                    activity.participant_fullname = user.firstname + ' ' + user.lastname
+                    if (participantId.includes('bot_')) {
+                      console.log('ActivitiesComponent participant includes bot', participantId);
+                      const bot_id = participantId.slice(4);
+                      const bot = this.botLocalDbService.getBotFromStorage(bot_id);
+                      console.log('ActivitiesComponent participant bot', bot);
+
+                      activity.participant_fullname = bot.name + ' (bot)'
+                    } else {
+
+                      const user = this.usersLocalDbService.getMemberFromStorage(participantId);
+                      console.log('ActivitiesComponent participant - user', user);
+
+                      if (user !== null) {
+                        activity.participant_fullname = user.firstname + ' ' + user.lastname
+                      } else {
+                        activity.participant_fullname = 'n.d.'
+                      }
+                    }
+
                     // participantsArray.forEach(participant => {
 
                     //   console.log('ActivitiesComponent participant ', participant);

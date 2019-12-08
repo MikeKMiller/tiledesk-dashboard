@@ -1,20 +1,26 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { Project } from '../models/project-model';
 import { UsersService } from '../services/users.service';
 import { NotifyService } from '../core/notify.service';
 import { TranslateService } from '@ngx-translate/core';
-
+import { ProjectPlanService } from '../services/project-plan.service';
+import { Subscription } from 'rxjs';
+import { publicKey } from '../utils/util';
+import { environment } from '../../environments/environment';
+import { AppConfigService } from '../services/app-config.service';
 @Component({
   selector: 'appdashboard-users',
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss']
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, OnDestroy {
 
   showSpinner = true;
   projectUsersList: any;
+  pendingInvitationList: any;
+
   id_projectUser: string;
   user_firstname: string;
   user_lastname: string;
@@ -22,6 +28,7 @@ export class UsersComponent implements OnInit {
 
   // set to none the property display of the modal
   display = 'none';
+  displayCancelInvitationModal = 'none';
   project: Project;
   id_project: string;
   USER_ROLE: string;
@@ -35,14 +42,40 @@ export class UsersComponent implements OnInit {
 
   deleteProjectUserSuccessNoticationMsg: string;
   deleteProjectUserErrorNoticationMsg: string;
+  projectPlanAgentsNo: number;
+  prjct_profile_name: string;
+  browserLang: string;
+  prjct_profile_type: string;
+  subscription_is_active: string;
+  subscription_end_date: any;
+  projectUsersLength: number;
 
-  
+  HAS_FINISHED_GET_PROJECT_USERS = false;
+  HAS_FINISHED_GET_PENDING_USERS = false;
+  pendingInvitationEmail: string;
+
+  resendInviteSuccessNoticationMsg: string;
+  resendInviteErrorNoticationMsg: string;
+
+  pendingInvitationIdToCancel: string;
+  pendingInvitationEmailToCancel: string;
+
+  canceledInviteSuccessMsg: string;
+  canceledInviteErrorMsg: string;
+  subscription: Subscription;
+  isVisible: boolean;
+  eos = environment.t2y12PruGU9wUtEGzBJfolMIgK;
+
+  storageBucket: string;
+
   constructor(
     private usersService: UsersService,
     private router: Router,
     private auth: AuthService,
     private notify: NotifyService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    private prjctPlanService: ProjectPlanService,
+    public appConfigService: AppConfigService
   ) { }
 
   ngOnInit() {
@@ -62,7 +95,80 @@ export class UsersComponent implements OnInit {
 
     this.hasChangedAvailabilityStatusInSidebar();
     this.getPendingInvitation();
+
+    this.getProjectPlan();
+    this.translateResendInviteSuccessMsg();
+    this.translateResendInviteErrorMsg();
+    this.translateCanceledInviteSuccessMsg();
+    this.translateCanceledInviteErrorMsg();
+    this.getOSCODE();
+
+    this.getStorageBucket();
   }
+
+  getStorageBucket() {
+    const firebase_conf = this.appConfigService.getConfig().firebase;
+    this.storageBucket = firebase_conf['storageBucket'];
+    console.log('STORAGE-BUCKET Users ', this.storageBucket)
+  }
+
+
+  getOSCODE() {
+    console.log('eoscode', this.eos)
+
+    if (this.eos  && this.eos === publicKey) {
+
+        this.isVisible = true;
+        console.log('eoscode isVisible ', this.isVisible);
+    } else {
+
+        this.isVisible = false;
+        console.log('eoscode isVisible ', this.isVisible);
+    }
+}
+
+  translateCanceledInviteSuccessMsg() {
+    this.translate.get('UsersPage.CanceledInviteSuccessMsg')
+      .subscribe((text: string) => {
+
+        this.canceledInviteSuccessMsg = text;
+        // console.log('+ + + canceledInviteSuccessMsg Invite Success Notication Msg', text)
+      });
+  }
+
+  translateCanceledInviteErrorMsg() {
+    this.translate.get('UsersPage.CanceledInviteErrorMsg')
+      .subscribe((text: string) => {
+
+        this.canceledInviteErrorMsg = text;
+        // console.log('+ + + canceledInviteErrorMsg Invite Success Notication Msg', text)
+      });
+
+  }
+
+  translateResendInviteSuccessMsg() {
+    this.translate.get('UsersPage.ResendInviteSuccessNoticationMsg')
+      .subscribe((text: string) => {
+
+        this.resendInviteSuccessNoticationMsg = text;
+        // console.log('+ + + resend Invite Success Notication Msg', text)
+      });
+  }
+
+  translateResendInviteErrorMsg() {
+    this.translate.get('UsersPage.ResendInviteErrorNoticationMsg')
+      .subscribe((text: string) => {
+
+        this.resendInviteErrorNoticationMsg = text;
+        // console.log('+ + + resend Invite Error Notication Msg', text)
+      });
+  }
+
+  getBrowserLanguage() {
+    this.browserLang = this.translate.getBrowserLang();
+    console.log('UsersComponent - BRS LANG ', this.browserLang)
+  }
+
 
   // TRANSLATION
   translateChangeAvailabilitySuccessMsg() {
@@ -70,7 +176,7 @@ export class UsersComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.changeAvailabilitySuccessNoticationMsg = text;
-        console.log('+ + + change Availability Success Notication Msg', text)
+        // console.log('+ + + change Availability Success Notication Msg', text)
       });
   }
 
@@ -80,7 +186,7 @@ export class UsersComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.changeAvailabilityErrorNoticationMsg = text;
-        console.log('+ + + change Availability Error Notication Msg', text)
+        // console.log('+ + + change Availability Error Notication Msg', text)
       });
   }
 
@@ -90,7 +196,7 @@ export class UsersComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.deleteProjectUserSuccessNoticationMsg = text;
-        console.log('+ + + RemoveProjectUserSuccessNoticationMsg ', text)
+        // console.log('+ + + RemoveProjectUserSuccessNoticationMsg ', text)
       });
   }
 
@@ -100,18 +206,16 @@ export class UsersComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.deleteProjectUserErrorNoticationMsg = text;
-        console.log('+ + + RemoveProjectUserErrorNoticationMsg ', text)
+        // console.log('+ + + RemoveProjectUserErrorNoticationMsg ', text)
       });
   }
 
   getLoggedUser() {
     this.auth.user_bs.subscribe((user) => {
       console.log('LOGGED USER GET IN USERS-COMP ', user)
-
       if (user) {
         this.CURRENT_USER_ID = user._id;
         console.log('Current USER ID ', this.CURRENT_USER_ID)
-
       }
     });
   }
@@ -126,16 +230,13 @@ export class UsersComponent implements OnInit {
   getCurrentProject() {
     this.auth.project_bs.subscribe((project) => {
       this.project = project;
+      console.log('UsersComponent - getCurrentProject -> project', this.project)
       if (this.project) {
         this.id_project = project._id
-
       }
     });
   }
 
-  goToAddUser() {
-    this.router.navigate(['project/' + this.id_project + '/user/add']);
-  }
   goToEditUser(projectUser_id) {
     this.router.navigate(['project/' + this.id_project + '/user/edit/' + projectUser_id]);
   }
@@ -148,20 +249,156 @@ export class UsersComponent implements OnInit {
     this.router.navigate(['project/' + this.id_project + '/users/pending']);
   }
 
+  getProjectPlan() {
+    this.subscription = this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+      console.log('UsersComponent - project Profile Data', projectProfileData)
+      if (projectProfileData) {
+
+        this.projectPlanAgentsNo = projectProfileData.profile_agents;
+        this.subscription_is_active = projectProfileData.subscription_is_active;
+        this.subscription_end_date = projectProfileData.subscription_end_date
+        this.prjct_profile_type = projectProfileData.profile_type;
+
+        // ADDS 'Plan' to the project plan's name
+        // NOTE: IF THE PLAN IS OF FREE TYPE IN THE USER INTERFACE THE MESSAGE 'You currently have ...' IS NOT DISPLAYED
+        if (this.prjct_profile_type === 'payment') {
+          if (this.browserLang === 'it') {
+
+            this.prjct_profile_name = 'Piano ' + projectProfileData.profile_name;
+
+          } else if (this.browserLang !== 'it') {
+
+            this.prjct_profile_name = projectProfileData.profile_name + ' Plan';
+          }
+        }
+      }
+    })
+  }
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
+
+  openModalSubsExpired() {
+    this.notify.displaySubscripionHasExpiredModal(true, this.prjct_profile_name, this.subscription_end_date);
+  }
+
   getAllUsersOfCurrentProject() {
     this.usersService.getProjectUsersByProjectId().subscribe((projectUsers: any) => {
-      console.log('PROJECT USERS (FILTERED FOR PROJECT ID)', projectUsers);
-
-      this.projectUsersList = projectUsers;
-
+      console.log('»» USER COMP - PROJECT USERS (FILTERED FOR PROJECT ID)', projectUsers);
+      if (projectUsers) {
+        this.projectUsersList = projectUsers;
+        this.projectUsersLength = projectUsers.length;
+        console.log('PROJECT USERS Length  (FILTERED FOR PROJECT ID)', this.projectUsersLength);
+      }
     }, error => {
       this.showSpinner = false;
-
       console.log('PROJECT USERS (FILTERED FOR PROJECT ID) - ERROR', error);
     }, () => {
+
+      this.HAS_FINISHED_GET_PROJECT_USERS = true;
       this.showSpinner = false;
       console.log('PROJECT USERS (FILTERED FOR PROJECT ID) - COMPLETE');
+
+      // this.getPendingInvitation();
     });
+  }
+
+  getPendingInvitation() {
+    this.usersService.getPendingUsers()
+      .subscribe((pendingInvitation: any) => {
+        console.log('»» USER COMP - GET PENDING INVITATION ', pendingInvitation);
+
+        if (pendingInvitation) {
+          this.pendingInvitationList = pendingInvitation;
+          this.countOfPendingInvites = pendingInvitation.length;
+          console.log('USER COMP - # OF PENDING INVITATION ', this.countOfPendingInvites);
+
+          // pendingInvitation.forEach(invite => {
+          //   this.projectUsersList.push({ 'id_pending_user': invite })
+          // });
+        }
+      }, error => {
+        this.showSpinner = false;
+        console.log('USER COMP - GET PENDING INVITATION - ERROR', error);
+      }, () => {
+        console.log('USER COMP - GET PENDING INVITATION - COMPLETE');
+        this.HAS_FINISHED_GET_PENDING_USERS = true;
+        this.showSpinner = false;
+      });
+  }
+
+
+  resendInvite(pendingInvitationId: string) {
+    console.log('RESEND INVITE TO PENDING INVITATION ID: ', pendingInvitationId);
+    this.usersService.getPendingUsersByIdAndResendEmail(pendingInvitationId)
+      .subscribe((pendingInvitation: any) => {
+        console.log('GET PENDING INVITATION BY ID AND RESEND INVITE - RES ', pendingInvitation);
+        this.pendingInvitationEmail = pendingInvitation['Resend invitation email to']['email'];
+        console.log('GET PENDING INVITATION BY ID AND RESEND INVITE - RES  email', this.pendingInvitationEmail);
+      }, error => {
+
+        console.log('GET PENDING INVITATION BY ID AND RESEND INVITE - ERROR', error);
+        // this.notify.showNotification('An error occurred sending the email', 4, 'report_problem')
+        this.notify.showNotification(this.resendInviteErrorNoticationMsg, 4, 'report_problem')
+
+      }, () => {
+        console.log('GET PENDING INVITATION BY ID AND RESEND INVITE - COMPLETE');
+        // =========== NOTIFY SUCCESS===========
+        //  this.notify.showNotification('Invitation email has been sent to ' + this.pendingInvitationEmail, 2, 'done');
+        this.notify.showNotification(this.resendInviteSuccessNoticationMsg + this.pendingInvitationEmail, 2, 'done');
+      });
+  }
+
+  openCancelInvitationModal(pendingInvitationId: string, pendingInvitationEmail: string) {
+    this.displayCancelInvitationModal = 'block';
+    console.log('openCancelInvitationModal pendingInvitationId: ', pendingInvitationId, ' pendingInvitationEmail: ', pendingInvitationEmail)
+
+    this.pendingInvitationIdToCancel = pendingInvitationId;
+    this.pendingInvitationEmailToCancel = pendingInvitationEmail
+  }
+
+  closeCancelInvitationModal() {
+    this.displayCancelInvitationModal = 'none';
+  }
+
+  deletePendinInvitation() {
+    this.displayCancelInvitationModal = 'none';
+    console.log('DELETE PENDING INVITATION - INVITATION ID ', this.pendingInvitationIdToCancel);
+    this.usersService.deletePendingInvitation(this.pendingInvitationIdToCancel)
+      .subscribe((pendingInvitation: any) => {
+        console.log('DELETE PENDING INVITATION ', pendingInvitation);
+
+      }, error => {
+        console.log('DELETE PENDING INVITATION - ERROR', error);
+        this.notify.showNotification(this.canceledInviteErrorMsg, 4, 'report_problem')
+      }, () => {
+        console.log('DELETE PENDING INVITATION - COMPLETE');
+        this.notify.showNotification(this.canceledInviteSuccessMsg + this.pendingInvitationEmailToCancel, 2, 'done');
+        this.getPendingInvitation();
+      });
+  }
+
+  goToAddUser() {
+    console.log('INVITE USER (GOTO) No of Project Users ', this.projectUsersLength)
+    console.log('INVITE USER (GOTO) No of Pending Invites ', this.countOfPendingInvites)
+    console.log('INVITE USER (GOTO) No of Operators Seats (agents purchased)', this.projectPlanAgentsNo)
+
+    // this.router.navigate(['project/' + this.id_project + '/user/add']);
+    if (this.prjct_profile_type === 'payment') {
+      if ((this.projectUsersLength + this.countOfPendingInvites) < this.projectPlanAgentsNo) {
+        this.router.navigate(['project/' + this.id_project + '/user/add']);
+      } else {
+
+        this.notify._displayContactUsModal(true, 'operators_seats_unavailable');
+      }
+    } else {
+      this.router.navigate(['project/' + this.id_project + '/user/add']);
+    }
+  }
+
+  getMoreOperatorsSeats() {
+    this.notify._displayContactUsModal(true, 'upgrade_plan');
   }
 
   openDeleteModal(projectUser_id: string, userID: string, userFirstname: string, userLastname: string) {
@@ -173,6 +410,8 @@ export class UsersComponent implements OnInit {
 
     console.log('DELETE PROJECT-USER with ID ', this.id_projectUser, ' - (Firstname: ', userFirstname, '; Lastname: ', userLastname, ')');
   }
+
+
 
   onCloseDeleteModalHandled() {
     this.display = 'none';
@@ -244,28 +483,13 @@ export class UsersComponent implements OnInit {
   // RE-RUN getAllUsersOfCurrentProject TO UPDATE THE LIST OF THE PROJECT' MEMBER
   hasChangedAvailabilityStatusInSidebar() {
     this.usersService.has_changed_availability_in_sidebar.subscribe((has_changed_availability) => {
-      console.log('USER COMP SUBSCRIBES TO HAS CHANGED AVAILABILITY FROM THE SIDEBAR', has_changed_availability)
-      this.getAllUsersOfCurrentProject();
+      console.log('»»USER COMP SUBSCRIBES TO HAS CHANGED AVAILABILITY FROM THE SIDEBAR', has_changed_availability)
+      if (has_changed_availability === true) {
+        this.getAllUsersOfCurrentProject();
+      }
     })
   }
 
-  getPendingInvitation() {
-    this.usersService.getPendingUsers()
-      .subscribe((pendingInvitation: any) => {
-        console.log('USER COMP - GET PENDING INVITATION ', pendingInvitation);
 
-        if (pendingInvitation) {
-          this.countOfPendingInvites = pendingInvitation.length
-          console.log('USER COMP - # OF PENDING INVITATION ', this.countOfPendingInvites);
-        }
-
-      }, error => {
-
-        console.log('USER COMP - GET PENDING INVITATION - ERROR', error);
-      }, () => {
-        console.log('USER COMP - GET PENDING INVITATION - COMPLETE');
-      });
-
-  }
 
 }

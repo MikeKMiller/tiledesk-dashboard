@@ -78,10 +78,9 @@ export class DepartmentService {
   }
 
   /**
-   * READ (GET)
-   *    * !!! NO MORE USED
-   *    * IN DEPT COMPONENT THE DEPT'S LIST IS CURRENTLY OBTAINED BY FILTERING
-   *      ALL THE DEPTS FOR THE ID OF THE CURRENT PROJECT (see BELOW getDeptsByProjectId)
+   **! *** GET DEPTS AS THE OLD WIDGET VERSION (USED YET BY SOME PROJECT) ***
+   *  !!! USED ONLY FOR TESTING THE WIDGET CALLBACK
+   *  * THAT GET THE DEPTS FILTERED FOR STATUS === 1 and WITHOUT AUTHENTICATION
    */
   // headers.append('Authorization', 'JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwic2VsZWN0ZWQiOnt9LCJnZXR0ZXJzIjp7fSwiX2lkIjoiNWE3MDQ0YzdjNzczNGQwZGU0ZGRlMmQ0Iiwid2FzUG9wdWxhdGVkIjpmYWxzZSwiYWN0aXZlUGF0aHMiOnsicGF0aHMiOnsicGFzc3dvcmQiOiJpbml0IiwidXNlcm5hbWUiOiJpbml0IiwiX192IjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnt9LCJpbml0Ijp7Il9fdiI6dHJ1ZSwicGFzc3dvcmQiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJfaWQiOnRydWV9LCJtb2RpZnkiOnt9LCJyZXF1aXJlIjp7fX0sInN0YXRlTmFtZXMiOlsicmVxdWlyZSIsIm1vZGlmeSIsImluaXQiLCJkZWZhdWx0IiwiaWdub3JlIl19LCJwYXRoc1RvU2NvcGVzIjp7fSwiZW1pdHRlciI6eyJkb21haW4iOm51bGwsIl9ldmVudHMiOnt9LCJfZXZlbnRzQ291bnQiOjAsIl9tYXhMaXN0ZW5lcnMiOjB9LCIkb3B0aW9ucyI6dHJ1ZX0sImlzTmV3IjpmYWxzZSwiX2RvYyI6eyJfX3YiOjAsInBhc3N3b3JkIjoiJDJhJDEwJGw3RnN1aS9FcDdONkEwTW10b1BNa2VjQnY0SzMzaFZwSlF3ckpGcHFSMVZSQ2JaUnkybHk2IiwidXNlcm5hbWUiOiJhbmRyZWEiLCJfaWQiOiI1YTcwNDRjN2M3NzM0ZDBkZTRkZGUyZDQifSwiJGluaXQiOnRydWUsImlhdCI6MTUxNzMwNzExM30.6kpeWLl_o5EgBzmzH3EGtJ_f3yhE7M9VMpx59ze_gbY');
   // headers.append('Authorization', 'JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyIkX18iOnsic3RyaWN0TW9kZSI6dHJ1ZSwic2VsZWN0ZWQiOnt9LCJnZXR0ZXJzIjp7fSwid2FzUG9wdWxhdGVkIjpmYWxzZSwiYWN0aXZlUGF0aHMiOnsicGF0aHMiOnsicGFzc3dvcmQiOiJpbml0IiwidXNlcm5hbWUiOiJpbml0IiwiX192IjoiaW5pdCIsIl9pZCI6ImluaXQifSwic3RhdGVzIjp7Imlnbm9yZSI6e30sImRlZmF1bHQiOnt9LCJpbml0Ijp7Il9fdiI6dHJ1ZSwicGFzc3dvcmQiOnRydWUsInVzZXJuYW1lIjp0cnVlLCJfaWQiOnRydWV9LCJtb2RpZnkiOnt9LCJyZXF1aXJlIjp7fX0sInN0YXRlTmFtZXMiOlsicmVxdWlyZSIsIm1vZGlmeSIsImluaXQiLCJkZWZhdWx0IiwiaWdub3JlIl19LCJlbWl0dGVyIjp7ImRvbWFpbiI6bnVsbCwiX2V2ZW50cyI6e30sIl9ldmVudHNDb3VudCI6MCwiX21heExpc3RlbmVycyI6MH19LCJpc05ldyI6ZmFsc2UsIl9kb2MiOnsiX192IjowLCJwYXNzd29yZCI6IiQyYSQxMCQ3WDBEOFY5T1dIYnNhZi91TTcuNml1ZUdCQjFUSWpoNGRnanFUS1dPOVk3UnQ1RjBwckVoTyIsInVzZXJuYW1lIjoiYW5kcmVhIiwiX2lkIjoiNWE2YWU1MjUwNmY2MmI2MDA3YTZkYzAwIn0sImlhdCI6MTUxNjk1NTA3Nn0.MHjEJFGmqqsEhm8sglvO6Hpt2bKBYs25VvGNP6W8JbI');
@@ -89,7 +88,7 @@ export class DepartmentService {
     const url = this.MONGODB_BASE_URL;
     // const url = `http://localhost:3000/app1/departments/`;
     // const url = `http://api.chat21.org/app1/departments/;
-    console.log('MONGO DB DEPARTMENTS URL', url);
+    console.log('GET DEPTS AS OLD WIDGET VERSION', url);
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
     headers.append('Authorization', this.TOKEN);
@@ -99,13 +98,46 @@ export class DepartmentService {
   }
 
   /**
+   **! *** GET DEPTS AS THE NEW WIDGET VERSION ***
+   */
+  public getDepartmentsAsNewWidgetVersion(): Observable<Department[]> {
+    const url = this.BASE_URL + this.project._id + '/widgets'
+    console.log('GET DEPTS AS THE NEW WIDGET VERSION URL', url);
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append('Authorization', this.TOKEN);
+    return this.http
+      .get(url, { headers })
+      .map((response) => response.json());
+  }
+
+
+    /**
+   **! *** GET VISITOR COUNTER ***
+   */
+  public getVisitorCounter(): Observable<[]> {
+    const url = this.BASE_URL + this.project._id + '/visitorcounter'
+    console.log('GET DEPTS AS THE NEW WIDGET VERSION URL', url);
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append('Authorization', this.TOKEN);
+    return this.http
+      .get(url, { headers })
+      .map((response) => response.json());
+  }
+
+
+  /**
    * GET ALL DEPTS WITH THE CURRENT PROJECT ID AND WITHOUT FILTER FOR STATUS
    * NOTE: THE CALLBACK TO GET THE DEPTS FILTERED FOR STATUS IS RUNNED BY THE WIDGET
+   * NOTE: the DSBRD CALL /departments/allstatus  WHILE the WIDGET  CALL /departments
+   * 
    * NOTE: chat21-api-node.js READ THE CURRENT PROJECT ID FROM THE URL SO IT SO NO LONGER NECESSARY TO PASS THE PROJECT ID AS PARAMETER
    */
   public getDeptsByProjectId(): Observable<Department[]> {
     const url = this.MONGODB_BASE_URL + 'allstatus';
-    // const url = 'https://api.tiledesk.com/v1/5b44c82def5dca0014d777ac/departments/'
+
+    // const url = 'https://api.tiledesk.com/v1/5c28b587348b680015feecca/departments/'+'allstatus'
     console.log('DEPARTMENTS URL', url);
     const headers = new Headers();
     headers.append('Content-Type', 'application/json');
@@ -210,8 +242,8 @@ export class DepartmentService {
    */
   public deleteMongoDbDeparment(id: string) {
 
-    let url = this.MONGODB_BASE_URL;
-    url += `${id}# chat21-api-nodejs`;
+    const url = this.MONGODB_BASE_URL + id;
+    // url += `${id}# chat21-api-nodejs`; 
     console.log('DELETE URL ', url);
 
     const headers = new Headers();
@@ -295,16 +327,16 @@ export class DepartmentService {
     headers.append('Authorization', this.TOKEN);
     const options = new RequestOptions({ headers });
 
-    const body = { 'status': status};
+    const body = { 'status': status };
     console.log('UPDATE DEPT STATUS - REQUEST BODY ', body);
 
     return this.http
-    .put(url, JSON.stringify(body), options)
-    .map((res) => res.json());
+      .put(url, JSON.stringify(body), options)
+      .map((res) => res.json());
   }
 
 
-  public updateDefaultDeptOnlineMsg(id: string, onlineMsg: string ) {
+  public updateDefaultDeptOnlineMsg(id: string, onlineMsg: string) {
     const url = this.MONGODB_BASE_URL + id;
 
     console.log('UPDATE DEFAULT DEPARTMENT URL  ', url);
@@ -319,8 +351,8 @@ export class DepartmentService {
 
     console.log('UPDATE DEFAULT DEPARTMENT BODY  ', body);
     return this.http
-    .put(url, JSON.stringify(body), options)
-    .map((res) => res.json());
+      .put(url, JSON.stringify(body), options)
+      .map((res) => res.json());
 
   }
 
@@ -339,8 +371,8 @@ export class DepartmentService {
 
     console.log('UPDATE DEFAULT DEPARTMENT BODY  ', body);
     return this.http
-    .put(url, JSON.stringify(body), options)
-    .map((res) => res.json());
+      .put(url, JSON.stringify(body), options)
+      .map((res) => res.json());
 
   }
 

@@ -27,6 +27,27 @@
                 {{ "DepartmentsPage.AddDepartment" | translate }}
             </button>
 
+            <!-- <button class="btn btn-info" style="padding: 8px 16px;margin:0px;" (click)=" getDepartments()">
+              <span class="icon" style="padding-right:8px">
+                <i class="material-icons">add_circle</i>
+              </span>
+                GET DEPT - TEST CALLBACK RUNNED BY OLD WIDGET VERSION
+            </button> -->
+
+            <!-- <button class="btn btn-info" style="padding: 8px 16px;margin:0px;" (click)="getDepartmentsAsNewWidgetVersion()">
+              <span class="icon" style="padding-right:8px">
+                <i class="material-icons">add_circle</i>
+              </span>
+                GET DEPT - TEST CALLBACK RUNNED BY NEW WIDGET VERSION
+            </button> -->
+
+             <!-- <button class="btn btn-info" style="padding: 8px 16px;margin:0px;" (click)="getVisitorCounter()">
+                <span class="icon" style="padding-right:8px">
+                  <i class="material-icons">add_circle</i>
+                </span>
+                  GET VISITOR COUNTER
+              </button> -->
+
           </div>
 
           <loading-spinner *ngIf="showSpinner"></loading-spinner>
@@ -271,7 +292,7 @@
 
       <div class="modal-body">
         <!-- <p> Are you sure you want to delete the department <strong>{{deptName_toDelete}}</strong>?</p> -->
-        <p style="font-weight:500; text-align: left; margin-top: 10px; color: #999"> 
+        <p style="font-weight:500; text-align: left; margin-top: 10px; color: #8894ab"> 
           {{ "DepartmentsPage.AreYouSure" | translate }}<strong>{{deptName_toDelete}}</strong>?
         </p>
       </div>

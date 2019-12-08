@@ -32,7 +32,7 @@
               <!-- <p class="hidden-lg hidden-md">Profile</p> -->
 
               <span class="tooltipx"> 
-                  <span  *ngIf="user?.emailverified == false" class="notification" style="font-weight: 200; font-size:12px; right:11px; top:3px; position: absolute;">
+                  <span  *ngIf="user?.emailverified == false" class="notification" style="font-weight: 200; font-size:12px; right:11px!important; top:3px!important; position: absolute!important;">
                       !
                       <span class="tooltiptext">
                         {{"NavBar.PendingVerification" | translate }}
@@ -49,7 +49,7 @@
                       <!-- <img class="img" src="assets/img/no_image_user.png" /> -->
 
                       <img *ngIf="userProfileImageExist === true || userImageHasBeenUploaded === true" 
-                      class="user-img" src="https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F{{user?._id}}%2Fphoto.jpg?alt=media" />
+                      class="user-img" src="https://firebasestorage.googleapis.com/v0/b/{{storageBucket}}/o/profiles%2F{{user?._id}}%2Fphoto.jpg?alt=media" />
                       
                       <img *ngIf="userProfileImageExist !== true && userImageHasBeenUploaded !== true" 
                       class="user-img" src="assets/img/no_image_user.png"/>
@@ -138,17 +138,41 @@ background-size:     contain; " -->
 
     <!-- frontiere21-hero-bckgrnd-full -->
     <!-- text-white bg-primary -->
-  <div class="pt-5 py-5" style="margin-right: -15px; height: 390px; background-color: #ffffff;
-    margin-top: -102px;margin-left: -15px;background-image: url(assets/img/frontiere21-hero.png);background-position:center bottom;background-repeat:no-repeat;background-size:cover;">
-    <div class="container">
+  <div class="pt-5 py-5 project_background" style="">
+    <!-- // added for new style start -->
+    <span style="height: 64px; position: absolute; width: 100%; left: 0%; top: 0px; background-color: rgba(66, 71, 112, 0.1);"></span>
+    <span style="height: 64px; position: absolute; width: 40%; bottom: 0px; right: 12%; background: rgba(255, 255, 255, 0.45);"></span>
+    <span style="height: 64px; position: absolute; width: 35%; bottom: -64px; right: 6%; background: rgba(50, 50, 93, 0.05);"></span>
+    <!-- // added for new style end -->
+     <!-- // commented for new style start -->
+    <!-- <div class="container">
       <div class="row text-center">
         <div class="col-md-12 text-center align-self-center my-5">
           <h1 class="display-1 head-title" style="font-family: 'Google Sans', sans-serif !important;margin-top: 95px;color: #f0806f">{{ 'ProjectsPage.Welcome' | translate }} in tiledesk. </h1>
           <p class="lead" style="color: #f0806f"> {{ 'ProjectsPage.BuildYourCustomer_1' | translate }} <br> {{ 'ProjectsPage.BuildYourCustomer_2' | translate }}</p>
         </div>
       </div>
+    </div> -->
+     <!-- // commented for new style end -->
+
+
+  </div>
+
+ <!-- // added for new style start -->
+  <div class="container">
+    <div class="row text-center" style="margin-bottom:90px ">
+      <div class="col-md-12 text-center align-self-center my-5">
+        <h1 class="display-1 head-title">
+          <!-- {{ 'ProjectsPage.Welcome' | translate }} {{ 'to' | translate}} tiledesk.  -->
+          {{ 'RecentProjects' | translate }}
+        </h1>
+        <!-- <p class="head-sub-title" > {{ 'ProjectsPage.BuildYourCustomer_1' | translate }} <br> {{ 'ProjectsPage.BuildYourCustomer_2' | translate }}</p> -->
+      </div>
     </div>
   </div>
+    <!-- // added for new style end -->
+
+
   <!-- margin-right:100px; margin-left:100px; -->
   <!-- <div style="background-color: #fff; height: 400px; z-index: 3; position:relative; background-repeat: no-repeat; background-image: url(assets/img/tiledesk-header.png); background-attachment: scroll; background-position: top right; "></div> -->
  
@@ -170,13 +194,15 @@ background-size:     contain; " -->
 
         <!-- CARD ADD PROJECT -->
         <!-- style="max-width: 256px;" -->
-        <div class="card" (click)='openCreateModal()' style="border-radius:10px">
+        <!-- openCreateModal()  -->
+        <div class="card" (click)='goToCreateProject()' style="border-radius:10px">
           <div class="card-content" style="height:203px">
               <!-- #55b9d1 -->
             <h3 class="title" style="color: #f0806f; text-align: center; padding-top:25px">
               <i class="material-icons" style="font-size:48px">add</i>
             </h3>
-            <h4 class="card-title" style="color: #f0806f; text-align: center; margin-bottom: 15px; font-family: 'Google Sans',sans-serif!important">
+            <h4 class="card-title" style="color: #f0806f; text-align: center; margin-bottom: 15px; font-family: 'Google Sans',sans-serif!important; font-weight: 400;
+            font-size: 24px;">
                 {{ 'ProjectsPage.AddProject' | translate }}
             </h4>
           </div>
@@ -191,7 +217,7 @@ background-size:     contain; " -->
           <!-- CARDS FROM THE PROJECT 'FOR' -->
           <!-- style="max-width: 256px;" -->
           <div class="card"  style="border-radius:10px" 
-            (click)='goToHome(project?.id_project?._id, project?.id_project?.name, project?.id_project?.profile?.name, project?.id_project?.trialExpired)'>
+            (click)='goToHome(project?.id_project?._id, project?.id_project?.name, project?.id_project?.profile?.name, project?.id_project?.trialExpired, project?.id_project?.trialDaysLeft)'>
             <div class="card-content"  style="height:160px">
               <h3 class="title" style="color: #566787; font-size:20px; margin-bottom: 0px;font-family: 'Google Sans',sans-serif!important">
                 {{ project?.id_project?.name }}

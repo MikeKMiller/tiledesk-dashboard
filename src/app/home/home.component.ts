@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService, SuperUser } from '../core/auth.service';
 import { environment } from '../../environments/environment';
 import { ActivatedRoute } from '@angular/router';
@@ -11,13 +11,17 @@ import { DepartmentService } from '../services/mongodb-department.service';
 import { RequestsService } from '../services/requests.service';
 import { NotifyService } from '../core/notify.service';
 import { TranslateService } from '@ngx-translate/core';
+import { ProjectPlanService } from '../services/project-plan.service';
+
+import { Subscription } from 'rxjs';
+import { publicKey } from './../utils/util';
 
 @Component({
   selector: 'home',
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, OnDestroy {
 
   firebaseProjectId: any;
   LOCAL_STORAGE_CURRENT_USER: any;
@@ -33,8 +37,21 @@ export class HomeComponent implements OnInit {
 
   USER_ROLE: string;
 
-  CHAT_BASE_URL = environment.chat.CHAT_BASE_URL
+  CHAT_BASE_URL = environment.chat.CHAT_BASE_URL;
+  eos = environment.t2y12PruGU9wUtEGzBJfolMIgK;
   browserLang: string;
+
+  prjct_name: string;
+  prjct_profile_name: string;
+  prjct_profile_type: string;
+  prjct_trial_expired: boolean;
+  subscription_is_active: boolean;
+  subscription_end_date: Date;
+  showSpinner = true;
+
+  subscription: Subscription;
+  isVisible: boolean;
+  installWidgetText: string;
   constructor(
     public auth: AuthService,
     private route: ActivatedRoute,
@@ -45,11 +62,15 @@ export class HomeComponent implements OnInit {
     private requestsService: RequestsService,
     private notify: NotifyService,
     private translate: TranslateService,
+    private prjctPlanService: ProjectPlanService
   ) { }
 
   ngOnInit() {
     console.log('!!! Hello HomeComponent! ');
+
     this.getBrowserLanguage();
+    this.translateInstallWidget();
+
     // console.log(environment.firebaseConfig.projectId);
     // this.firebaseProjectId = environment.firebaseConfig.projectId;
 
@@ -75,16 +96,182 @@ export class HomeComponent implements OnInit {
     this.usersService.getBotsByProjectIdAndSaveInStorage();
 
     // TEST FUNCTION : GET ALL AVAILABLE PROJECT USER
-    this.getAvailableProjectUsersByProjectId();
+    // this.getAvailableProjectUsersByProjectId();
 
     this.getUserRole();
-
+    this.getProjectPlan();
+    this.getVisitorCounter();
+    this.getOSCODE();
   }
+
+    // TRANSLATION
+    translateInstallWidget() {
+      this.translate.get('InstallTiledeskNowAndStartChatting')
+        .subscribe((text: string) => {
+  
+          this.installWidgetText = text;
+          console.log('+ + + translateInstallWidget', text)
+        });
+    }
+
+  getOSCODE() {
+    console.log('eoscode', this.eos)
+
+    if (this.eos && this.eos === publicKey) {
+
+      this.isVisible = true;
+      console.log('eoscode isVisible ', this.isVisible);
+    } else {
+
+      this.isVisible = false;
+      console.log('eoscode isVisible ', this.isVisible);
+    }
+  }
+
+  getVisitorCounter() {
+    this.departmentService.getVisitorCounter()
+      .subscribe((visitorCounter: any) => {
+        console.log('getVisitorCounter : ', visitorCounter);
+
+        // x test
+        // const visitorCounter = [{ "_id": "5cd2ff0492424372bfa33574", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://www.tiledesk.com", "__v": 0, "createdAt": "2019-05-08T16:08:36.085Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-12T16:24:50.764Z", "totalViews": 12564 }, { "_id": "5cd313cc92424372bfa6fad2", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://www.tiledesk.com", "__v": 0, "createdAt": "2019-05-08T17:37:16.872Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-08T03:14:10.802Z", "totalViews": 108 }, { "_id": "5cd317e492424372bfa7baad", "id_project": "5ad5bd52c975820014ba900a", "origin": null, "__v": 0, "createdAt": "2019-05-08T17:54:44.273Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-11T23:04:26.285Z", "totalViews": 567 }, { "_id": "5cd3187492424372bfa7d4b4", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://testwidget.tiledesk.com", "__v": 0, "createdAt": "2019-05-08T17:57:08.426Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-11T14:43:27.804Z", "totalViews": 47 }, { "_id": "5cd3188292424372bfa7d694", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://support.tiledesk.com", "__v": 0, "createdAt": "2019-05-08T17:57:22.763Z", "path": "/5ad5bd52c975820014ba900a/departments/allstatus", "updatedAt": "2019-10-18T10:24:28.260Z", "totalViews": 608 }, { "_id": "5cd37ce592424372bfb4f18c", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://tiledesk.com", "__v": 0, "createdAt": "2019-05-09T01:05:41.918Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-10-31T15:29:55.687Z", "totalViews": 8 }, { "_id": "5cd5a42392424372bffcf279", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://codingpark.com", "__v": 0, "createdAt": "2019-05-10T16:17:39.561Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-05-12T04:30:49.985Z", "totalViews": 7 }, { "_id": "5cda868492424372bfa41f87", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://edit.tiledesk.com", "__v": 0, "createdAt": "2019-05-14T09:12:36.334Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-11T14:34:01.768Z", "totalViews": 627 }, { "_id": "5cdbdc5092424372bfd446ed", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://localhost:4200", "__v": 0, "createdAt": "2019-05-15T09:30:56.291Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-07-08T15:18:49.783Z", "totalViews": 669 }, { "_id": "5ce3d37e92424372bff07234", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://s3.eu-west-1.amazonaws.com", "__v": 0, "createdAt": "2019-05-21T10:31:26.193Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-05-21T11:41:47.565Z", "totalViews": 4 }, { "_id": "5ce3ee6692424372bff47a01", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://support-pre.tiledesk.com", "__v": 0, "createdAt": "2019-05-21T12:26:14.830Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-09-03T09:52:03.442Z", "totalViews": 29 }, { "_id": "5ce5532492424372bf26422f", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://localhost:8000", "__v": 0, "createdAt": "2019-05-22T13:48:20.153Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-05-22T15:10:52.097Z", "totalViews": 4 }, { "_id": "5cea371792424372bfcdf00f", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://evil.com/", "__v": 0, "createdAt": "2019-05-26T06:49:59.238Z", "path": "/5ad5bd52c975820014ba900a/departments/allstatus", "updatedAt": "2019-07-20T06:11:47.539Z", "totalViews": 4 }, { "_id": "5cee342c92424372bf5f5ea3", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://testwidget.tiledesk.it", "__v": 0, "createdAt": "2019-05-29T07:26:36.984Z", "path": "/5ad5bd52c975820014ba900a/departments/5b8eb4955ca4d300141fb2cc/operators", "updatedAt": "2019-05-29T07:27:10.327Z", "totalViews": 3 }, { "_id": "5cf072d392424372bfb993d7", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://importchinaproducts.com", "__v": 0, "createdAt": "2019-05-31T00:18:27.503Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-03T22:52:21.678Z", "totalViews": 27 }, { "_id": "5cf0892292424372bfbbfcc7", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://importchinaproducts.com", "__v": 0, "createdAt": "2019-05-31T01:53:38.809Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-09T14:02:29.505Z", "totalViews": 18 }, { "_id": "5cf64fdf92424372bf9137d0", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://54.37.234.246:1111", "__v": 0, "createdAt": "2019-06-04T11:02:55.936Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-06-14T18:49:33.847Z", "totalViews": 49 }, { "_id": "5cf8d08b1caa8022ad5248e2", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://www.importchinaproducts.com", "__v": 0, "createdAt": "2019-06-06T08:36:27.328Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-10-28T08:37:36.711Z", "totalViews": 7 }, { "_id": "5cfa4eff1caa8022ad8fbc5f", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://54.37.225.206:4300", "__v": 0, "createdAt": "2019-06-07T11:48:15.191Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-06-10T05:58:55.933Z", "totalViews": 26 }, { "_id": "5cfa9c7d1caa8022ad9e40e1", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://vps695843.ovh.net:4300", "__v": 0, "createdAt": "2019-06-07T17:18:53.536Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-06-07T17:18:53.536Z", "totalViews": 1 }, { "_id": "5cfe93281caa8022ad2bbebf", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://widget.kobs.pl", "__v": 0, "createdAt": "2019-06-10T17:28:08.213Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-06-10T17:46:51.521Z", "totalViews": 6 }, { "_id": "5cfe96c91caa8022ad2c850a", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://panel.kobs.pl", "__v": 0, "createdAt": "2019-06-10T17:43:37.206Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-06-17T05:51:44.478Z", "totalViews": 189 }, { "_id": "5cfed7fc1caa8022ad37ff73", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://localhost:8080", "__v": 0, "createdAt": "2019-06-10T22:21:48.300Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-06-10T22:21:50.845Z", "totalViews": 2 }, { "_id": "5d14ead832da4a99f4209603", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://translate.googleusercontent.com", "__v": 0, "createdAt": "2019-06-27T16:12:08.146Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-06-27T16:12:52.926Z", "totalViews": 3 }, { "_id": "5d1ed5de32da4a99f4bdc056", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://localhost", "__v": 0, "createdAt": "2019-07-05T04:45:18.031Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-07-11T08:25:47.008Z", "totalViews": 168 }, { "_id": "5d1f030932da4a99f4c3bc4b", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://192.168.1.137", "__v": 0, "createdAt": "2019-07-05T07:58:01.426Z", "path": "/5ad5bd52c975820014ba900a/departments", "updatedAt": "2019-07-05T07:58:01.426Z", "totalViews": 1 }, { "_id": "5db2e17b6b2dfaad7c1f1962", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://localhost:3000", "__v": 0, "createdAt": "2019-10-25T11:50:19.452Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-10-30T12:17:18.155Z", "totalViews": 15 }, { "_id": "5db30c036b2dfaad7c269761", "id_project": "5ad5bd52c975820014ba900a", "origin": "null", "__v": 0, "createdAt": "2019-10-25T14:51:47.062Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-10-25T14:52:03.462Z", "totalViews": 2 }, { "_id": "5db314186b2dfaad7c281712", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://www.frontiere21.it", "__v": 0, "createdAt": "2019-10-25T15:26:16.834Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-10-25T15:51:49.450Z", "totalViews": 11 }, { "_id": "5dc92fb73b1c8559fb6c3cc6", "id_project": "5ad5bd52c975820014ba900a", "origin": "http://egov2-dev.comune.bari.it:3000", "__v": 0, "createdAt": "2019-11-11T09:53:59.339Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-11T09:53:59.339Z", "totalViews": 1 }, { "_id": "5dc9714e3b1c8559fb79445a", "id_project": "5ad5bd52c975820014ba900a", "origin": "https://baribot.herokuapp.com", "__v": 0, "createdAt": "2019-11-11T14:33:50.123Z", "path": "/5ad5bd52c975820014ba900a/widgets", "updatedAt": "2019-11-11T14:34:18.612Z", "totalViews": 2 }]
+        console.log('getVisitorCounter length : ', visitorCounter.length);
+        if (visitorCounter && visitorCounter.length > 0) {
+
+
+
+          let count = 0;
+          visitorCounter.forEach(visitor => {
+
+            // console.log('getVisitorCounter visitor origin ', visitor.origin);
+            if (
+              visitor.origin !== "https://s3.eu-west-1.amazonaws.com" &&
+              visitor.origin !== "http://testwidget.tiledesk.it" &&
+              visitor.origin !== "http://testwidget.tiledesk.com" &&
+              visitor.origin !== "https://support.tiledesk.com" &&
+              visitor.origin !== null &&
+              visitor.origin !== 'null' &&
+              visitor.origin !== "http://evil.com/"
+            ) {
+
+              count = count + 1;
+              console.log('getVisitorCounter the origin ', visitor.origin, ' is != of test-site and is != of support-tiledesk and is != of null ', count);
+              // console.log('getVisitorCounter ORIGIN != TEST-SITE AND != SUPPORT-TILEDESK »» HAS INSTALLED');
+
+            } else {
+              console.log('getVisitorCounter the origin ', visitor.origin, ' is = of test-site or is = support-tiledesk or is = null');
+            }
+
+          });
+
+          if (count === 0) {
+
+            // this.notify.presentModalInstallTiledeskModal()
+            console.log('getVisitorCounter count', count, '!!!');
+
+          }
+
+        } else {
+          console.log('getVisitorCounter length : ', visitorCounter.length);
+          console.log('getVisitorCounter VISITOR COUNTER IS O »» HAS NOT INSTALLED');
+          // this.notify.presentModalInstallTiledeskModal() 
+          //  this.notify.showNotificationInstallWidget(`${this.installWidgetText} <span style="color:#ffffff; display: inline-block; max-width: 100%;"> Nicola </span>`, 0, 'info');
+         
+        }
+
+      }, (error) => {
+
+        console.log('getVisitorCounter ERROR ', error);
+
+      }, () => {
+        console.log('getVisitorCounter * COMPLETE *');
+      });
+  }
+
 
   getBrowserLanguage() {
     this.browserLang = this.translate.getBrowserLang();
     console.log('!!! ===== HELLO HOME COMP ===== BRS LANG ', this.browserLang)
   }
+
+  getProjectPlan() {
+    this.subscription = this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+      console.log('ProjectPlanService (HomeComponent) project Profile Data', projectProfileData)
+      if (projectProfileData) {
+
+
+        this.prjct_name = projectProfileData.name;
+        this.prjct_profile_name = projectProfileData.profile_name;
+        this.prjct_trial_expired = projectProfileData.trial_expired;
+        this.prjct_profile_type = projectProfileData.profile_type;
+        this.subscription_is_active = projectProfileData.subscription_is_active;
+        this.subscription_end_date = projectProfileData.subscription_end_date;
+
+
+        this.showSpinner = false;
+
+        if (this.prjct_profile_type === 'free') {
+          if (this.prjct_trial_expired === false) {
+            console.log('!!! ===== HELLO HOME COMP this.browserLang 2 ', this.browserLang);
+
+            if (this.browserLang === 'it') {
+
+              this.prjct_profile_name = 'Piano Pro (trial)'
+
+            } else if (this.browserLang !== 'it') {
+              this.prjct_profile_name = 'Pro (trial) Plan'
+
+            }
+          } else {
+            console.log('!!! ===== HELLO HOME COMP this.browserLang 3 ', this.browserLang);
+            if (this.browserLang === 'it') {
+
+              this.prjct_profile_name = 'Piano ' + projectProfileData.profile_name;
+
+            } else if (this.browserLang !== 'it') {
+
+              this.prjct_profile_name = projectProfileData.profile_name + ' Plan';
+
+            }
+          }
+        } else if (this.prjct_profile_type === 'payment') {
+          console.log('!!! ===== HELLO HOME COMP this.browserLang 4 ', this.browserLang);
+          if (this.browserLang === 'it') {
+
+            this.prjct_profile_name = 'Piano ' + projectProfileData.profile_name;
+
+          } else if (this.browserLang !== 'it') {
+
+            this.prjct_profile_name = projectProfileData.profile_name + ' Plan';
+          }
+        }
+
+      }
+    })
+  }
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
+
+
+  goToPricingOrOpenModalSubsExpired() {
+    if (this.prjct_profile_type === 'free') {
+
+      this.router.navigate(['project/' + this.projectId + '/pricing']);
+
+    } else if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false) {
+
+      this.notify.displaySubscripionHasExpiredModal(true, this.prjct_profile_name, this.subscription_end_date);
+      // this.notify.showCheckListModal(true);
+    }
+  }
+
+  goToPricing() {
+    this.router.navigate(['project/' + this.projectId + '/pricing']);
+  }
+
+
 
   // RISOLVE lo USE-CASE: L'UTENTE è NELLA HOME DEL PROGETTO A (DI CUI è OWNER)
   // SEGUE UN LINK CHE LO PORTA (AD ESEMPIO) AL DETTAGLIO DI UNA RICHIESTA DEL PROGETTO B (DI CUI è AGENT)
@@ -144,6 +331,10 @@ export class HomeComponent implements OnInit {
     this.router.navigate(['project/' + this.projectId + '/activities-demo']);
   }
 
+  goToHoursStaticPage() {
+    this.router.navigate(['project/' + this.projectId + '/hours-demo']);
+  }
+
 
   openChat() {
     // localStorage.setItem('chatOpened', 'true');
@@ -199,7 +390,12 @@ export class HomeComponent implements OnInit {
   }
 
   goToTiledeskMobileAppPage() {
-    const url = 'https://www.tiledesk.com/it/mobile-live-chat-android-iphone-app/';
+    let url = ''
+    if (this.browserLang === 'it') {
+      url = 'https://www.tiledesk.com/it/mobile-live-chat-android-iphone-app/';
+    } else {
+      url = 'https://www.tiledesk.com/mobile-live-chat-android-iphone-app-en/';
+    }
     window.open(url, '_blank');
   }
 
@@ -268,7 +464,7 @@ export class HomeComponent implements OnInit {
 
         // !!!! NO MORE USED - MOVED IN USER SERVICE
         // this.getAllUsersOfCurrentProject();
-
+        console.log('HOME CALL -> getAllUsersOfCurrentProjectAndSaveInStorage')
         this.usersService.getAllUsersOfCurrentProjectAndSaveInStorage();
 
       }
@@ -364,9 +560,7 @@ export class HomeComponent implements OnInit {
     this.router.navigate(['project/' + this.projectId + '/activities']);
   }
 
-  goToPricing() {
-    this.router.navigate(['project/' + this.projectId + '/pricing']);
-  }
+
 
 
 }

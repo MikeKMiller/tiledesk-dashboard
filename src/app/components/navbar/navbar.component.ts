@@ -6,7 +6,7 @@ import { AuthService } from '../../core/auth.service';
 import { TranslateService } from '@ngx-translate/core';
 import { RequestsService } from '../../services/requests.service';
 import { AuthGuard } from '../../core/auth.guard';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 
 declare var $: any;
 
@@ -17,6 +17,11 @@ import { isDevMode } from '@angular/core';
 import { UploadImageService } from '../../services/upload-image.service';
 import { NotifyService } from '../../core/notify.service';
 import * as moment from 'moment';
+import { ProjectPlanService } from '../../services/project-plan.service';
+import { ProjectService } from '../../services/project.service';
+import { publicKey } from '../../utils/util';
+
+import { AppConfigService } from '../../services/app-config.service';
 
 @Component({
     selector: 'app-navbar',
@@ -61,7 +66,9 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
     HIDE_PENDING_EMAIL_NOTIFICATION = true;
 
     DETECTED_USER_PROFILE_PAGE = false;
-    CHAT_BASE_URL = environment.chat.CHAT_BASE_URL
+    CHAT_BASE_URL = environment.chat.CHAT_BASE_URL;
+    
+    eos = environment.t2y12PruGU9wUtEGzBJfolMIgK;
 
     displayLogoutModal = 'none';
 
@@ -73,6 +80,22 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
     HAS_OPENED_THE_CHAT: boolean;
     IS_AVAILABLE: boolean;
     projectId: string;
+
+    prjct_profile_name: string;
+    prjct_profile_type: string;
+    prjct_trial_expired: boolean;
+
+    prjc_trial_days_left: number;
+    prjc_trial_days_left_percentage: number;
+    browserLang: string;
+    subscription_end_date: any;
+    subscription_is_active: boolean;
+    HOME_ROUTE_IS_ACTIVE: boolean;
+    projects: any;
+    isVisible: boolean;
+
+    storageBucket: string;
+
     constructor(
         location: Location,
         private element: ElementRef,
@@ -83,7 +106,10 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
         private router: Router,
         private usersService: UsersService,
         private uploadImageService: UploadImageService,
-        private notifyService: NotifyService
+        private notifyService: NotifyService,
+        private prjctPlanService: ProjectPlanService,
+        private projectService: ProjectService,
+        public appConfigService: AppConfigService
     ) {
         this.location = location;
         this.sidebarVisible = false;
@@ -127,7 +153,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
 
         this.getProjectUserId();
 
-        // this.detectChatPage();
+        this.getActiveRoute();
         this.hidePendingEmailNotification();
         this.detectUserProfilePage();
 
@@ -144,7 +170,57 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
         this.hasChangedAvailabilityStatusInUsersComp();
         // this.subscribeToLogoutPressedinSidebarNavMobile();
 
+        this.getProjectPlan();
+        this.getBrowserLanguage();
+        this.listenCancelSubscription();
+        this.getIfIsCreatedNewProject();
+
+
+        this.getOSCODE();
+        this.getStorageBucket()
     } // OnInit
+
+    getStorageBucket() {
+        const firebase_conf = this.appConfigService.getConfig().firebase;
+        this.storageBucket = firebase_conf['storageBucket'];
+        console.log('STORAGE-BUCKET Navbar ', this.storageBucket) 
+    }
+
+    getOSCODE() {
+        console.log('NavbarComponent eoscode', this.eos)
+
+        if (this.eos && this.eos === publicKey) {
+
+            // this.isVisible = true;
+            this.isVisible = false;
+            console.log('NavbarComponent eoscode isVisible ', this.isVisible);
+        } else {
+
+            this.isVisible = false;
+            console.log('NavbarComponent eoscode isVisible ', this.isVisible);
+        }
+    }
+
+    getProjects() {
+        console.log('NavbarComponent calling getProjects ... ');
+        this.projectService.getProjects().subscribe((projects: any) => {
+            console.log('NavbarComponent getProjects PROJECTS ', projects);
+            if (projects) {
+                this.projects = projects;
+            }
+        }, error => {
+            console.log('NavbarComponent getProjects - ERROR ', error)
+        }, () => {
+            console.log('NavbarComponent getProjects - COMPLETE')
+        });
+    }
+
+
+
+    getBrowserLanguage() {
+        this.browserLang = this.translate.getBrowserLang();
+        console.log('!!! ===== NAVABAR ===== BRS LANG ', this.browserLang)
+    }
 
     getUserAvailability() {
         this.usersService.user_is_available_bs.subscribe((user_available) => {
@@ -200,36 +276,65 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
         });
     }
 
-    /* DETECT IF IS THE CHAT PAGE */
-    detectChatPage() {
+    getActiveRoute() {
+        // this.router.events.subscribe((val) => {
 
-        this.router.events.subscribe((val) => {
+        //     if (this.location.path() !== '') {
+        //         this.route = this.location.path();
+        //         // console.log('»> »> »> NAVBAR ROUTE DETECTED »> ', this.route)
+        //         if (this.route === '/chat') {
+        //             // console.log('»> »> »> NAVBAR ROUTE DETECTED  »> ', this.route)
+        //             this.DETECTED_CHAT_PAGE = true;
+        //         } else {
+        //             this.DETECTED_CHAT_PAGE = false;
+        //         }
+        //     }
+        // });
+
+        this.router.events.filter((event: any) => event instanceof NavigationEnd)
+            .subscribe(event => {
+                // console.log('NAVBAR NavigationEnd ', event.url);
+
+                /** HIDE THE PLAN NAME IF THE ROUTE ACTIVE IS THE HOME */
+                if (event.url.indexOf('/home') !== -1) {
+                    console.log('NAVBAR NavigationEnd - THE home route IS ACTIVE  ', event.url);
+                    this.HOME_ROUTE_IS_ACTIVE = true;
+                } else {
+                    console.log('NAVBAR NavigationEnd - THE home route IS NOT ACTIVE  ', event.url);
+                    this.HOME_ROUTE_IS_ACTIVE = false;
+                }
 
 
-            if (this.location.path() !== '') {
-                this.route = this.location.path();
-                // console.log('»> »> »> NAVBAR ROUTE DETECTED »> ', this.route)
-                if (this.route === '/chat') {
-                    // console.log('»> »> »> NAVBAR ROUTE DETECTED  »> ', this.route)
+                if (event.url.indexOf('/chat') !== -1) {
+                    console.log('NAVBAR NavigationEnd - THE chat route IS ACTIVE  ', event.url);
                     this.DETECTED_CHAT_PAGE = true;
                 } else {
+                    console.log('NAVBAR NavigationEnd - THE chat route IS NOT ACTIVE  ', event.url);
                     this.DETECTED_CHAT_PAGE = false;
                 }
-            }
-        });
+            })
     }
 
     /**
      * - WHEN IS DETECTED THE PROJECT PAGE OR THE LOGIN PAGE OR THE SIGNUP PAGE  THE "PENDING EMAIL VERIFICATION ALERT " IS NOT DISPLAYED
      */
     hidePendingEmailNotification() {
-
         this.router.events.subscribe((val) => {
-
             if (this.location.path() !== '') {
                 this.route = this.location.path();
                 // console.log('»> »> »> NAVBAR ROUTE DETECTED »> ', this.route)
-                if ((this.route === '/projects') || (this.route === '/login') || (this.route === '/signup')) {
+                if (
+                    (this.route === '/projects') ||
+                    (this.route === '/login') ||
+                    (this.route === '/signup') ||
+                    (this.route === '/create-project') ||
+                    (this.route === '/forgotpsw') ||
+                    (this.route.indexOf('/install-tiledesk') !== -1) ||
+                    (this.route.indexOf('/handle-invitation') !== -1) ||
+                    (this.route.indexOf('/signup-on-invitation') !== -1) ||
+                    (this.route.indexOf('/create-new-project') !== -1) ||
+                    (this.route.indexOf('/success') !== -1)
+                ) {
                     // console.log('»> »> »> NAVBAR ROUTE DETECTED  »> ', this.route)
                     // this.DETECTED_PROJECT_PAGE = true;
                     this.HIDE_PENDING_EMAIL_NOTIFICATION = true;
@@ -263,13 +368,20 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
 
     /**
      * WHEN IS DETECTED THE USER-PROFILE PAGE (NOTE: THE ROUTE '/user-profile' IS THAT IN WHICH THERE IS NOT THE SIDEBAR)
-     * TO THE "PENDING EMAIL VERIFICATION ALERT " IS ASIGNED THE CLASS is-user-profile-page THAT MODIFIED THE LEFT POSITION */
+     * TO THE "PENDING EMAIL VERIFICATION ALERT " IS ASIGNED THE CLASS is-user-profile-page THAT MODIFIED THE LEFT POSITION 
+     * USE THE SAME CLASS ALSO FOR create-new-project and pricing THAT are OTHER PAGE WITHOUT SIDEABAR */
     detectUserProfilePage() {
         this.router.events.subscribe((val) => {
 
             if (this.location.path() !== '') {
                 this.route = this.location.path();
-                if (this.route === '/user-profile') {
+                //  console.log('»> »> »> NAVBAR ROUTE DETECTED  »> ', this.route)
+                if (
+                    this.route === '/user-profile' ||
+                    this.route === '/create-new-project' ||
+                    this.route.indexOf('/pricing') !== -1 ||
+                    this.route.indexOf('/password/change') !== -1
+                ) {
 
                     this.DETECTED_USER_PROFILE_PAGE = true;
                     // console.log('»> »> »> NAVBAR ROUTE DETECTED  »> ', this.route, 'DETECTED_USER_PROFILE_PAGE ', this.DETECTED_USER_PROFILE_PAGE)
@@ -288,8 +400,103 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
                 this.project = project
                 console.log('!!C-U 00 -> NAVBAR project from AUTH service subscription ', this.project);
                 this.projectId = project._id;
+
+                // this.prjct_profile_name = this.project.profile_name;
+                // this.prjct_trial_expired = this.project.trial_expired;
+                // this.prjc_trial_days_left = this.project.trial_days_left;
+                // // this.prjc_trial_days_left_percentage = ((this.prjc_trial_days_left *= -1) * 100) / 30
+                // this.prjc_trial_days_left_percentage = (this.prjc_trial_days_left * 100) / 30;
+
+                // // this.prjc_trial_days_left_percentage IT IS 
+                // // A NEGATIVE NUMBER AND SO TO DETERMINE THE PERCENT IS MADE AN ADDITION
+                // const perc = 100 + this.prjc_trial_days_left_percentage
+                // console.log('SIDEBAR project perc ', perc)
+
+
+                // this.prjc_trial_days_left_percentage = this.round5(perc)
+                // console.log('SIDEBAR project trial days left % rounded', this.prjc_trial_days_left_percentage);
             }
         });
+    }
+
+
+    getProjectPlan() {
+        this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+            console.log('ProjectPlanService (navbar) project Profile Data', projectProfileData)
+            if (projectProfileData) {
+                this.prjct_profile_name = projectProfileData.profile_name;
+                this.prjct_trial_expired = projectProfileData.trial_expired;
+                this.prjc_trial_days_left = projectProfileData.trial_days_left;
+                this.prjct_profile_type = projectProfileData.profile_type;
+                this.subscription_end_date = projectProfileData.subscription_end_date;
+                this.subscription_is_active = projectProfileData.subscription_is_active;
+                // this.prjc_trial_days_left_percentage = ((this.prjc_trial_days_left *= -1) * 100) / 30
+
+                if (this.prjct_trial_expired === false) {
+                    this.prjc_trial_days_left_percentage = (this.prjc_trial_days_left * 100) / 30;
+                    // this.prjc_trial_days_left_percentage IT IS 
+                    // A NEGATIVE NUMBER AND SO TO DETERMINE THE PERCENT IS MADE AN ADDITION
+                    const perc = 100 + this.prjc_trial_days_left_percentage
+                    console.log('ProjectPlanService (navbar) project perc ', perc)
+
+                    this.prjc_trial_days_left_percentage = this.round5(perc);
+                    console.log('ProjectPlanService (navbar) trial days left % rounded', this.prjc_trial_days_left_percentage);
+
+                } else if (this.prjct_trial_expired === true) {
+                    this.prjc_trial_days_left_percentage = 100;
+                }
+                if (this.prjct_profile_type === 'payment') {
+                    console.log('!!! ===== HELLO HOME COMP this.browserLang 4 ', this.browserLang);
+                    if (this.browserLang === 'it') {
+                        this.prjct_profile_name = 'Piano ' + projectProfileData.profile_name;
+                    } else if (this.browserLang !== 'it') {
+                        this.prjct_profile_name = projectProfileData.profile_name + ' Plan';
+                    }
+                }
+
+            }
+        })
+    }
+
+    /**
+     * *! ############ CANCEL SUBSCRIPTION ############ !*
+    * * the callback cancelSubscription() IS RUNNED in NotificationMessageComponent when the user click on
+    *   the modal button Cancel Subscription
+    * * NotificationMessageComponent, through the notify service, publishes the progress status
+    *   of the cancellation of the subscription
+    * * the NavbarComponent (this component) is subscribed to cancelSubscriptionCompleted$ and, when hasDone === true,
+    *   call prjctPlanService.getProjectByID() that get and publish (with prjctPlanService.projectPlan$) the updated project object
+    * * ProjectEditAddComponent is a subscriber of prjctPlanService.projectPlan$ so also his UI is refreshed when the prjctPlanService publish projectPlan$
+    */
+
+    listenCancelSubscription() {
+        this.notifyService.cancelSubscriptionCompleted$.subscribe((hasDone: boolean) => {
+
+            console.log('NavbarComponent cancelSubscriptionCompleted hasDone', hasDone);
+            if (hasDone === false) { }
+
+            if (hasDone === true) {
+                setTimeout(() => {
+                    this.prjctPlanService.getProjectByID(this.projectId);
+                }, 2000);
+            }
+        });
+    }
+
+
+    openModalSubsExpired() {
+        this.notifyService.displaySubscripionHasExpiredModal(true, this.prjct_profile_name, this.subscription_end_date);
+    }
+
+    round5(x) {
+        // const percentageRounded = Math.ceil(x / 5) * 5;
+        // console.log('SIDEBAR project trial days left % rounded', percentageRounded);
+        // return Math.ceil(x / 5) * 5;
+        return x % 5 < 3 ? (x % 5 === 0 ? x : Math.floor(x / 5) * 5) : Math.ceil(x / 5) * 5
+    }
+
+    goToPricing() {
+        this.router.navigate(['project/' + this.projectId + '/pricing']);
     }
 
     getLoggedUser() {
@@ -298,17 +505,48 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
             // tslint:disable-next-line:no-debugger
             // debugger
             this.user = user;
+
+            // GET ALL PROJECTS WHEN IS PUBLISHED THE USER
+            if (this.user) {
+                this.getProjects();
+            }
         });
+    }
+
+    getIfIsCreatedNewProject() {
+        this.projectService.hasCreatedNewProject$.subscribe((hasCreatedNewProject) => {
+            console.log('»»» »»» getIfIsCreatedNewProject hasCreatedNewProject', hasCreatedNewProject)
+
+            if (hasCreatedNewProject) {
+                this.getProjects();
+            }
+
+        })
     }
 
 
     goToProjects() {
         console.log('HAS CLICCKED GO TO PROJECT ')
         this.router.navigate(['/projects']);
-
         // (in AUTH SERVICE ) RESET PROJECT_BS AND REMOVE ITEM PROJECT FROM STORAGE WHEN THE USER GO TO PROJECTS PAGE
         this.auth.hasClickedGoToProjects()
         console.log('00 -> NAVBAR project AFTER GOTO PROJECTS ', this.project)
+    }
+
+    goToHome(id_project: string, project_name: string) {
+
+        // RUNS ONLY IF THE THE USER CLICK OVER A PROJECT WITH THE ID DIFFERENT FROM THE CURRENT PROJECT ID
+        if (id_project !== this.projectId) {
+            this.router.navigate([`/project/${id_project}/home`]);
+
+            // WHEN THE USER SELECT A PROJECT ITS ID and NAME IS SEND IN THE AUTH SERVICE THAT PUBLISHES IT
+            const project: Project = {
+                _id: id_project,
+                name: project_name,
+            }
+            this.auth.projectSelected(project)
+            console.log('!!! GO TO HOME - PROJECT ', project)
+        }
     }
 
     goToUserProfile() {
@@ -317,6 +555,10 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
             this.router.navigate(['/project/' + this.project._id + '/user-profile']);
 
         }
+    }
+
+    goToCreateProject() {
+        this.router.navigate(['/create-new-project']);
     }
 
 
@@ -485,27 +727,27 @@ export class NavbarComponent implements OnInit, AfterViewInit, AfterContentCheck
             // border-left-color: rgb(255, 179, 40);
 
         }, {
-                type: type[color],
-                timer: 2000,
-                template:
+            type: type[color],
+            timer: 2000,
+            template:
                 `<div data-notify="container" style="padding:10px!important;background-color:rgb(255, 255, 238);box-shadow:0px 0px 5px rgba(51, 51, 51, 0.3);cursor:pointer;border-left:15px solid;${borderColor}"
                     class="col-xs-11 col-sm-3 alert alert-{0}" role="alert">` +
-                    '<button type="button" aria-hidden="true" class="close custom-hover" data-notify="dismiss" style="background-color:beige; padding-right:4px;padding-left:4px;border-radius:50%;">×</button>' +
-                    '<div class="row">' +
-                        '<div class="col-xs-2 col-sm-2 col-md-2 col-lg-2">' +
-                            '<span data-notify="icon" class="notify-icon"> ' + `<img style="width:30px!important"src="assets/img/${chatIcon}" alt="Notify Icon"></span>` +
-                        '</div>' +
-                        '<div class="col-xs-10 col-sm-10 col-md-10 col-lg-10">' +
-                            '<span data-notify="title">{1}</span>' +
-                            '<span data-notify="message">{2}</span>' +
-                        '</div>' +
-                    '</div>' +
+                '<button type="button" aria-hidden="true" class="close custom-hover" data-notify="dismiss" style="background-color:beige; padding-right:4px;padding-left:4px;border-radius:50%;">×</button>' +
+                '<div class="row">' +
+                '<div class="col-xs-2 col-sm-2 col-md-2 col-lg-2">' +
+                '<span data-notify="icon" class="notify-icon"> ' + `<img style="width:30px!important"src="assets/img/${chatIcon}" alt="Notify Icon"></span>` +
+                '</div>' +
+                '<div class="col-xs-10 col-sm-10 col-md-10 col-lg-10">' +
+                '<span data-notify="title">{1}</span>' +
+                '<span data-notify="message">{2}</span>' +
+                '</div>' +
+                '</div>' +
                 '</div>'
-                // placement: {
-                //     from: from,
-                //     align: align
-                // }
-            },
+            // placement: {
+            //     from: from,
+            //     align: align
+            // }
+        },
             {
                 // onClose: this.test(),
             }

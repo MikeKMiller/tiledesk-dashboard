@@ -17,13 +17,18 @@ import { UsersService } from '../services/users.service';
 import { DOCUMENT } from '@angular/platform-browser';
 import { avatarPlaceholder, getColorBck } from '../utils/util';
 import { Subscription } from 'rxjs/Subscription';
+import { fadeInAnimation } from '../_animations/index';
 
 import * as firebase from 'firebase';
 import 'firebase/database';
+import { AppConfigService } from '../services/app-config.service';
 
 @Component({
   selector: 'appdashboard-requests-msgs',
   templateUrl: './requests-msgs.component.html',
+  animations: [fadeInAnimation],
+  // tslint:disable-next-line:use-host-property-decorator
+  host: { '[@fadeInAnimation]': '' },
   styleUrls: ['./requests-msgs.component.scss'],
   encapsulation: ViewEncapsulation.None, /* it allows to customize 'Powered By' */
 })
@@ -41,7 +46,8 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('openChatBtn')
   private openChatBtn: ElementRef;
 
-  CHAT_BASE_URL = environment.chat.CHAT_BASE_URL
+  CHAT_BASE_URL = environment.chat.CHAT_BASE_URL;
+  BASE_URL = environment.mongoDbConfig.BASE_URL;
 
   id_request: string;
   messagesList: Message[];
@@ -116,6 +122,13 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
   subscription: Subscription
 
   locationSubscription: any;
+  OPEN_RIGHT_SIDEBAR = false;
+  selectedQuestion: string;
+  train_bot_sidebar_height: any;
+  // train_bot_sidebar_top_pos: any;
+
+  storageBucket: string;
+
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -127,6 +140,7 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
     private platformLocation: PlatformLocation,
     private botLocalDbService: BotLocalDbService,
     private usersService: UsersService,
+    public appConfigService: AppConfigService,
     @Inject(DOCUMENT) private document: Document
   ) {
 
@@ -142,7 +156,8 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
   onResize(event: any) {
 
     this.newInnerWidth = event.target.innerWidth;
-    // console.log('REQUEST-MSGS - ON RESIZE -> WINDOW WITH ', this.newInnerWidth);
+    console.log('REQUEST-MSGS - ON RESIZE -> WINDOW WITH ', this.newInnerWidth);
+
 
     this.newInnerHeight = event.target.innerHeight;
     // console.log('REQUEST-MSGS - ON RESIZE -> WINDOW HEIGHT ', this.newInnerHeight);
@@ -155,8 +170,11 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
     // RESOLVE THE BUG: @media screen and (max-width: 992px) THE THE HEIGHT OF THE  MODAL 'USERS LIST' IS NOT 100%
     if (this.newInnerWidth <= 991) {
       this.users_list_modal_height = elemMainContent.clientHeight + 70 + 'px'
+
+      this.train_bot_sidebar_height = elemMainContent.clientHeight + 'px'
       // console.log('REQUEST-MSGS - *** MODAL HEIGHT ***', this.users_list_modal_height);
     }
+
 
     // remove the padding on small device
     // if (this.newInnerWidth <= 768) {
@@ -165,6 +183,7 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
     //   elemMainContent.setAttribute('style', 'padding-right: 15px; padding-left: 15px');
     // }
   }
+
 
   // detect browser back button click
   @HostListener('window:popstate', ['$event'])
@@ -189,15 +208,53 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.detectMobile();
     this.getProjectUserRole();
+
+    this.getStorageBucket();
   }
 
+  getStorageBucket() {
+    const firebase_conf = this.appConfigService.getConfig().firebase;
+    this.storageBucket = firebase_conf['storageBucket'];
+    console.log('STORAGE-BUCKET Requests-msgs ', this.storageBucket)
+  }
+
+
+  openRightSideBar(message: string) {
+    this.OPEN_RIGHT_SIDEBAR = true;
+    console.log('»»»» OPEN RIGHT SIDEBAR ', this.OPEN_RIGHT_SIDEBAR, ' MSG: ', message);
+    this.selectedQuestion = message;
+
+
+    // questo non funziona se è commented BUG RESOLVE
+    const elemMainContent = <HTMLElement>document.querySelector('.main-content');
+    this.train_bot_sidebar_height = elemMainContent.clientHeight + 10 + 'px'
+    console.log('REQUEST-MSGS - ON OPEN RIGHT SIDEBAR -> RIGHT SIDEBAR HEIGHT', this.train_bot_sidebar_height);
+
+
+    // BUG RESOLVE inserisco questo visto che all'ampiezza in cui compare la sidebar sx non è comunque possibile scorrere
+    // la pagina
+    // const _elemMainPanel = <HTMLElement>document.querySelector('.main-panel');
+    // _elemMainPanel.setAttribute('style', 'overflow-x: hidden !important;overflow-y: hidden !important;');
+
+    // const mainPanelScrollPosition = _elemMainPanel.scrollTop;
+    // console.log('mainPanelScrollPosition ', mainPanelScrollPosition);
+    // this.train_bot_sidebar_top_pos = mainPanelScrollPosition + 'px'
+  }
+
+  closeRightSidebar(event) {
+    console.log('»»»» CLOSE RIGHT SIDEBAR ', event);
+    this.OPEN_RIGHT_SIDEBAR = event;
+
+    // const _elemMainPanel = <HTMLElement>document.querySelector('.main-panel');
+    // _elemMainPanel.setAttribute('style', 'overflow-x: hidden !important;');
+  }
+
+
+
   listenUrl() {
-
     // this.subscription = this.router.events.subscribe(() => {
-
     //   const location_path = this._location.path();
     //   console.log('»»» REQUEST DETAILS location (**** location path ****)', location_path);
-
 
     this.locationSubscription = this._location.subscribe((val: any) => {
       // console.log('»»»»» _location ', val)
@@ -224,6 +281,8 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // });
   }
+
+
 
   getProjectUserRole() {
     this.usersService.project_user_role_bs.subscribe((user_role) => {
@@ -436,6 +495,8 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.showSpinner = false;
     }, () => {
       console.log('»»» REQUESTS-MSGS.COMP: GET NODEJS REQUEST BY FireBase REQ ID * COMPLETE *');
+
+
     });
   }
 
@@ -468,6 +529,7 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
       }, () => {
         console.log('*MSGS - REQUESTS-MSGS.COMP getMessagesList * COMPLETE *');
         // this.showSpinner = false;
+
       });
 
   }
@@ -768,8 +830,6 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     });
   }
-
-
   // end new
 
   /// new
@@ -796,7 +856,6 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         });
     });
-
   }
 
 
@@ -941,7 +1000,10 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   openTranscript() {
-    const url = 'https://api.tiledesk.com/v1/public/requests/' + this.id_request + '/messages.html';
+
+    // const url = 'https://api.tiledesk.com/v1/public/requests/' + this.id_request + '/messages.html';
+    const url = this.BASE_URL + 'public/requests/' + this.id_request + '/messages.html';
+
     console.log('openTranscript url ', url);
     window.open(url, '_blank');
   }
@@ -1046,7 +1108,7 @@ export class RequestsMsgsComponent implements OnInit, AfterViewInit, OnDestroy {
   //     if (user) {
   //       // console.log('user ', user)
   // tslint:disable-next-line:max-line-length
-  //       const user_img = `<img class=\"rightsidebar-user-img\" src=\"https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F${user['_id']}%2Fphoto.jpg?alt=media\" onerror=\"this.src='assets/img/no_image_user.png'\"/>`
+  //       const user_img = `<img class=\"rightsidebar-user-img\" src=\"https://firebasestorage.googleapis.com/v0/b/{{storageBucket}}/o/profiles%2F${user['_id']}%2Fphoto.jpg?alt=media\" onerror=\"this.src='assets/img/no_image_user.png'\"/>`
 
   //       return member_id = user_img + user['firstname'] + ' ' + user['lastname']
   //     } else {

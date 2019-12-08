@@ -11,7 +11,8 @@
         <div class="col-md-8">
           <!-- style="min-height: 195px" -->
           <div class="card">
-            <div class="card-content table-responsive">
+            <loading-spinner *ngIf="showSpinner"></loading-spinner>
+            <div *ngIf="!showSpinner" class="card-content table-responsive">
 
                 <table class="table table-hover">
                   <thead>
@@ -31,6 +32,7 @@
                       </th>
 
                       <th></th>
+                      <th></th>
 
                     </tr>
                 </thead>
@@ -38,13 +40,14 @@
                 <tbody>
                 
                 <tr *ngIf="pending_invites?.length === 0">
-                  <td colspan="4" style="text-align:center; font-weight: 400; color: #7695a5;">
+                  <td colspan="5" style="text-align:center; font-weight: 400; color: #7695a5;">
                     {{ "UsersPage.NoPendingInvitation" | translate }}
                   </td>
 
                 </tr>
 
                   <tr *ngFor="let invites of pending_invites"> 
+                    
                     <td style="width:1%; white-space:nowrap; text-align: center;">
                       <i class="material-icons" style="color: rgba(0,0,0,0.54)">
                         query_builder
@@ -58,7 +61,7 @@
                       <span style="display: block; color:#7695a5; font-size: 12px; font-weight: 400">
                          
                         
-                        {{ "UsersPage.DateOfSending" | translate }}: {{ invites?.createdAt | date: 'd/M/y' }}
+                        {{ "UsersPage.DateOfSending" | translate }}: {{ invites?.createdAt | date: 'dd/MM/yy' }}
                        </span>
                     </td>
 
@@ -74,6 +77,13 @@
                     <td>
                       <span style="cursor: pointer; font-weight:400;color:#039be5" (click)="resendInvite(invites?._id)">
                         {{ "UsersPage.ResendInvite" | translate }} 
+                      </span>
+                      
+                    </td>
+
+                    <td>
+                      <span style="cursor: pointer; font-weight:400;color:#039be5" (click)="deletePendinInvitation(invites?._id)">
+                       Delete
                       </span>
                       
                     </td>

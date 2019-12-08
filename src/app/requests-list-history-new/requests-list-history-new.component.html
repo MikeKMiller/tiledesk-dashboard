@@ -5,10 +5,31 @@
 
 <div class="main-content" style="padding-top:0px">
   <div class="container-fluid">
+    
+    <div class="row">
+      <div class="col-md-12">
+        <div *ngIf="prjct_profile_type === 'payment' && subscription_is_active === false ||  prjct_profile_type === 'free' && trial_expired === true">
+  
+          <div class="card" style="margin-top: 6px; margin-bottom: 0px;">
+            <div class="card-content">
+   
+                <i class="material-icons" style="vertical-align: middle; color: #00bcd4;">info</i>
+                <span class="msg-alert">
+                  <!-- History is only available for the past 14 days. Renew your subscription for unlimited chat history -->
+                  {{ 'HistoryPage.HistoryIsOnlyAvailableForThePast14Days' | translate }}.
+                  <span style="color: #039be5; cursor:pointer" (click)="openModalSubsExpiredOrGoToPricing()">{{ "Pricing.UpgradeYourPlan" | translate }} </span> 
+                  {{ 'HistoryPage.ForUnlimitedChatHistory' | translate }}
+                </span>
+             
+            </div>
+          </div>
+        </div> 
+      </div>
+    </div> 
 
     <div class="row">
       <div class="col-md-12">
-        <div class="card" style="margin-bottom: 0px;">
+        <div class="card" style="margin-bottom: 0px;margin-top: 15px;">
           <div class="card-content" style="padding-top: 0px;padding-bottom: 15px;">
               <!-- <div class="card-header" style="background-color:#ffffff; padding: 8px;"> -->
             
@@ -126,11 +147,11 @@
                             </label>
                             <div class="col-sm-6" >
                               <my-date-picker name="mydate" [options]="myDatePickerOptions" 
-                                [(ngModel)]="startDate" ></my-date-picker>
+                                [(ngModel)]="startDate" [disabled]="date_picker_is_disabled"></my-date-picker>
                             </div>
                             <div class="col-sm-6">
                               <my-date-picker name="mydate" [options]="myDatePickerOptions"
-                                [(ngModel)]="endDate" ></my-date-picker>
+                                [(ngModel)]="endDate" [disabled]="date_picker_is_disabled"></my-date-picker>
                             </div>
                           </div>
                         </div>
@@ -181,6 +202,7 @@
                               <!-- <span style="color: #394f5a">  </span> -->
                                 {{ 'ExportToCSV' | translate }}
                             </button>
+                            
                           </div>
                         </div>
       
@@ -194,7 +216,6 @@
         </div>
       </div>
     </div>
-
 
     <div class="row">
       <div class="col-md-12">
@@ -290,8 +311,7 @@
                   </td>
                 </tr> 
  
-                 <tr *ngFor="let request of requestList">
-                   
+                <tr *ngFor="let request of requestList">
                   <td style="text-align:center">
  
                     <span (click)='goToRequestMsgs(request?.request_id)' style="cursor:pointer">
@@ -405,14 +425,14 @@
                       <span *ngIf="participant !== request?.requester_id && participant !== 'system' && participant !== currentUserID" class="tooltipx"> 
                         <span (click)="goToMemberProfile( participant )" style="cursor:pointer; display: block">
                   
-                          <!-- IF IS A BOT -->
+                          <!-- IF IS A BOT bot_image.png -->
                           <img *ngIf="participant.indexOf('bot_') !== -1" style="vertical-align: middle; width: 25px; height: 25px; border-radius: 50%; border: 1px solid #eee; margin-top: 1px; margin-bottom: 1px" 
-                          class="user-img" src="assets/img/bot_image.png" 
+                          class="user-img" src="assets/img/bot_image_as_human.jpg" 
                           onerror="this.src='assets/img/no_image_user.png'"/>
 
                           <!-- IF IS A HUMAN -->
                           <img *ngIf="participant.indexOf('bot_') === -1" style="vertical-align: middle; width: 25px; height: 25px; border-radius: 50%; border: 1px solid #eee; margin-top: 1px; margin-bottom: 1px" 
-                          class="user-img" src="https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F{{participant}}%2Fphoto.jpg?alt=media" 
+                          class="user-img" src="https://firebasestorage.googleapis.com/v0/b/{{storageBucket}}/o/profiles%2F{{participant}}%2Fphoto.jpg?alt=media" 
                           onerror="this.src='assets/img/no_image_user.png'"/>
 
                           <span class="member" [innerHTML]="members_replace( participant )"></span>
@@ -426,7 +446,7 @@
                       <span *ngIf="participant === currentUserID"> 
                          <!-- IF IS THE LOGGED USER -->
                          <img style="vertical-align: middle; width: 25px; height: 25px; border-radius: 50%; border: 1px solid #eee;margin-top: 1px; margin-bottom: 1px" 
-                         class="user-img" src="https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F{{participant}}%2Fphoto.jpg?alt=media" 
+                         class="user-img" src="https://firebasestorage.googleapis.com/v0/b/{{storageBucket}}/o/profiles%2F{{participant}}%2Fphoto.jpg?alt=media" 
                          onerror="this.src='assets/img/no_image_user.png'"/>
                          <span class="current-user-member" [innerHTML]="members_replace(participant)"></span>
                       </span>

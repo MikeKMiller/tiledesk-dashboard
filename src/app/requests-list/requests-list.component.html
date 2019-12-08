@@ -1,5 +1,8 @@
+<p style="margin-top:6px; padding-left:30px;position: relative;z-index: 1050;" class="navbar-brand">
+    {{ 'Requests' | translate }}  
+</p>
 
-<!-- MOMGO DB REQUEST (ALIAS VISITORS) LIST -->
+<!--
 <div class="row">
   <div class="col-md-12">
     <button (click)="seeIamAgentRequests(seeAll = !seeAll)" *ngIf="ROLE_IS_AGENT === false" 
@@ -7,11 +10,9 @@
         class="navbar-brand btn-with-border-effect"  
         [ngClass]="{'tab-active' : displayBtnLabelSeeYourRequets === false, 'border-from-center' : displayBtnLabelSeeYourRequets === true}"
         [disabled]="displayBtnLabelSeeYourRequets === false">
-    
-      <!-- {{ 'SupportRequests' | translate }}  -->
-      {{ "AllAgentsRequests" | translate }} 
+        {{ "AllAgentsRequests" | translate }} 
     </button> 
-    <!--  -->
+
     <button (click)="seeIamAgentRequests(seeAll = !seeAll)" 
       style="z-index: 1050;position: relative;margin-top:6px; padding-right:30px; padding-left:30px; height:56px" 
       class="navbar-brand btn-with-border-effect"
@@ -20,23 +21,34 @@
   
         {{ "YourRequests" | translate }}
     </button> 
-
-    <!-- z-index:1050 -->
-    <!-- <ul id="pill-horizontal" *ngIf="ROLE_IS_AGENT === false" class="nav nav-pills nav-pills-info custom" 
-      style="position:relative; z-index:1030; margin-top: 14px; max-width: 528px;">
-      <li class="active" (click)="seeIamAgentRequests(seeAll = !seeAll)">
-        <a href="#pill1" data-toggle="tab">
-          {{ "AllAgentsRequests" | translate }} 
-        </a>
-        </li>
-      <li (click)="seeIamAgentRequests(seeAll = !seeAll)">
-        <a href="#pill2" data-toggle="tab">
-          {{ "YourRequests" | translate }}
-        </a>
-      </li>
-    </ul> -->
   </div>
 </div>
+-->
+<ul class="bottom-nav">
+
+    <li (click)="seeIamAgentRequests(seeAll = !seeAll)" 
+        *ngIf="ROLE_IS_AGENT === false"
+        [ngClass]="
+          { 'disabled-li' : displayBtnLabelSeeYourRequets === false, 
+            'border-from-center' : displayBtnLabelSeeYourRequets === true,
+            'li-active' : displayBtnLabelSeeYourRequets === false
+          }"
+        class="btn-with-border-effect">
+        
+        <a> {{ "AllAgentsRequests" | translate }} </a> 
+    </li>
+    <li (click)="seeIamAgentRequests(seeAll = !seeAll)" 
+        [ngClass]="
+        { 'disabled-li' : displayBtnLabelSeeYourRequets === true, 
+          'border-from-center' : displayBtnLabelSeeYourRequets === false, 
+          'li-active' : displayBtnLabelSeeYourRequets === true
+        }"
+        class="btn-with-border-effect">
+
+        <a> {{ "YourRequests" | translate }} </a> 
+    </li>
+ 
+</ul>
 
 <div class="main-content" style="padding-top:0px; margin-top: 25px;">
   <div class="container-fluid">
@@ -882,14 +894,14 @@
                     <div *ngFor="let m of request?.members_array"  style="font-size:0.8em;">
                       <span *ngIf="m !== request?.requester_id && m !== 'system' && m !== currentUserID" class="tooltipx"> 
                         <span (click)="goToMemberProfile( m )" style="cursor:pointer; display: block">
-                          <!-- IF IS A BOT -->
+                          <!-- IF IS A BOT bot_image.png  -->
                           <img *ngIf="m.indexOf('bot_') !== -1" style="vertical-align: middle; width: 25px; height: 25px; border-radius: 50%; border: 1px solid #eee; margin-top: 1px; margin-bottom: 1px" 
-                          class="user-img" src="assets/img/bot_image.png" 
+                          class="user-img" src="assets/img/bot_image_as_human.jpg" 
                           onerror="this.src='assets/img/no_image_user.png'"/>
                           
                           <!-- IF IS A HUMAN -->
                           <img *ngIf="m.indexOf('bot_') === -1" style="vertical-align: middle; width: 25px; height: 25px; border-radius: 50%; border: 1px solid #eee; margin-top: 1px; margin-bottom: 1px" 
-                          class="user-img" src="https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F{{m}}%2Fphoto.jpg?alt=media" 
+                          class="user-img" src="https://firebasestorage.googleapis.com/v0/b/{{storageBucket}}/o/profiles%2F{{m}}%2Fphoto.jpg?alt=media" 
                           onerror="this.src='assets/img/no_image_user.png'"/>
 
                           <span class="member" [innerHTML]="members_replace( m )"></span>
@@ -899,7 +911,7 @@
                       <span *ngIf="m === currentUserID"> 
                          <!-- IF IS THE LOGGED USER -->
                         <img style="vertical-align: middle; width: 25px; height: 25px; border-radius: 50%; border: 1px solid #eee;margin-top: 1px; margin-bottom: 1px" 
-                            class="user-img" src="https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F{{m}}%2Fphoto.jpg?alt=media" 
+                            class="user-img" src="https://firebasestorage.googleapis.com/v0/b/{{storageBucket}}/o/profiles%2F{{m}}%2Fphoto.jpg?alt=media" 
                             onerror="this.src='assets/img/no_image_user.png'"/>
                             <span class="current-user-member" [innerHTML]="members_replace( m )"></span>
                       </span>

@@ -1,41 +1,92 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { IMyDpOptions, IMyDateModel } from 'mydatepicker';
+import { NotifyService } from '../../core/notify.service';
+import { ProjectPlanService } from '../../services/project-plan.service';
+import { StaticPageBaseComponent } from './../static-page-base/static-page-base.component';
+import { Subscription } from 'rxjs';
+
 @Component({
   selector: 'appdashboard-activities-static',
   templateUrl: './activities-static.component.html',
   styleUrls: ['./activities-static.component.scss']
 })
-export class ActivitiesStaticComponent implements OnInit {
+export class ActivitiesStaticComponent extends StaticPageBaseComponent implements OnInit, OnDestroy {
   activities: any;
   agentAvailabilityOrRoleChange: string;
   agentDeletion: string;
   agentInvitation: string;
   newRequest: string;
   projectId: string;
+  prjct_profile_type: string;
+  subscription_is_active: any;
+  prjct_profile_name: string;
+  subscription_end_date: Date;
+  browserLang: string;
+
+  subscription: Subscription;
 
   public myDatePickerOptions: IMyDpOptions = {
     // other options...
     dateFormat: 'dd/mm/yyyy',
     // dateFormat: 'yyyy, mm , dd',
   };
-  
+
   constructor(
     private translate: TranslateService,
     public auth: AuthService,
-    private router: Router
-  ) { }
+    private router: Router,
+    private prjctPlanService: ProjectPlanService,
+    private notify: NotifyService
+  ) {
+    super();
+  }
 
   ngOnInit() {
     this.buildActivitiesOptions();
     this.getCurrentProject();
+    this.getBrowserLang();
+    this.getProjectPlan();
+  }
+  getBrowserLang() {
+    this.browserLang = this.translate.getBrowserLang();
+  }
+
+  getProjectPlan() {
+    this.subscription = this.prjctPlanService.projectPlan$.subscribe((projectProfileData: any) => {
+      console.log('ProjectPlanService (ActivitiesStaticComponent) project Profile Data', projectProfileData)
+      if (projectProfileData) {
+
+
+
+        this.prjct_profile_type = projectProfileData.profile_type;
+        this.subscription_is_active = projectProfileData.subscription_is_active;
+
+        this.subscription_end_date = projectProfileData.subscription_end_date
+
+        this.prjct_profile_name = this.buildPlanName(projectProfileData.profile_name, this.browserLang, this.prjct_profile_type);
+
+        if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false) {
+
+
+          this.notify.displaySubscripionHasExpiredModal(true, this.prjct_profile_name, this.subscription_end_date)
+        }
+
+
+      }
+    })
+  }
+
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
   }
 
   getCurrentProject() {
     this.auth.project_bs.subscribe((project) => {
-      console.log('!!! ANALYTICS STATIC - project ', project)
+      console.log('!!! ACTIVITIES STATIC - project ', project)
 
       if (project) {
         this.projectId = project._id
@@ -91,7 +142,11 @@ export class ActivitiesStaticComponent implements OnInit {
 
 
   goToPricing() {
-    this.router.navigate(['project/' + this.projectId + '/pricing']);
+    if (this.prjct_profile_type === 'payment' && this.subscription_is_active === false) {
+      this.notify._displayContactUsModal(true, 'upgrade_plan');
+    } else {
+      this.router.navigate(['project/' + this.projectId + '/pricing']);
+    }
   }
 
 }

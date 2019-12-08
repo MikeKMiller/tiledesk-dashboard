@@ -63,12 +63,12 @@ export class MongodbFaqService {
   }
 
   /**
-   * READ (GET ALL FAQ)
+   * READ (GET ALL FAQ) - NOT USED
    */
   public getMongDbFaq(): Observable<Faq[]> {
     const url = this.MONGODB_BASE_URL;
 
-    console.log('MONGO DB FAQ URL', url);
+    console.log('GET ALL FAQ URL', url);
     // console.log('MONGO DB TOKEN', this.TOKEN);
 
     console.log('NEW DATE (FOR THE UPDATE) ', new Date().getTime());
@@ -99,7 +99,7 @@ export class MongodbFaqService {
   }
 
   /**
-   * GET FAQ BY FAQ-KB ID
+   * GET FAQ BY FAQ-KB ID (alias BOT ID)
    * @param id_faq_kb
    */
   public getMongoDbFaqByFaqKbId(id_faq_kb: string): Observable<Faq[]> {
@@ -115,6 +115,26 @@ export class MongodbFaqService {
     return this.http
       .get(url, { headers })
       .map((response) => response.json());
+  }
+
+    /**
+   * GET FAQ BY TEXT (CONTAINED IN THE QUESTION OR IN THE ANSWER)
+   * @param id_faq_kb
+   */
+  public getFaqsByText(text: string): Observable<Faq[]> {
+    // let url = 'http://localhost:3000/app1/faq/?id_faq_kb=5a81598721333b920c3e5949';
+    let url = this.MONGODB_BASE_URL;
+    url += '?text=' + text;
+
+    console.log('MONGO DB GET BY ID FAQ URL', url);
+
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append('Authorization', this.TOKEN);
+    return this.http
+      .get(url, { headers })
+      .map((response) => response.json())
+      // .filter((data) =>  data)
   }
 
   /**
@@ -144,9 +164,9 @@ export class MongodbFaqService {
     headers.append('Authorization', this.TOKEN);
     const options = new RequestOptions({ headers });
 
-    const body = { 'question': `${question}`, 'answer': `${answer}`, 'id_faq_kb': `${id_faq_kb}` };
+    const body = { 'question': question, 'answer': `${answer}`, 'id_faq_kb': `${id_faq_kb}` };
 
-    console.log('POST REQUEST BODY ', body);
+    console.log('ADD FAQ POST BODY ', body);
 
     const url = this.MONGODB_BASE_URL;
 
@@ -227,18 +247,19 @@ export class MongodbFaqService {
       .map((res) => res.json());
 
   }
-
-  public searchRemoteFaqByRemoteFaqKbKey(remoteFaqKbKey: string, question: string) {
+  // public searchRemoteFaqByRemoteFaqKbKey(remoteFaqKbKey: string, question: string) {
+  public searchRemoteFaqByRemoteFaqKbKey(botId: string, question: string) {
     const headers = new Headers();
     headers.append('Accept', 'application/json');
     headers.append('Content-type', 'application/json');
     // headers.append('Authorization', 'Basic YWRtaW46YWRtaW5wNHNzdzByZA==');
     headers.append('Authorization', this.TOKEN);
-    const url = this.MONGODB_BASE_URL + 'askbot';
+    // const url = this.MONGODB_BASE_URL + 'askbot';
+    const url = this.BASE_URL + this.project._id + '/faq_kb/' + 'askbot';
     const options = new RequestOptions({ headers });
 
-    const body = { 'question': question, 'doctype': 'normal', 'min_score': '0.0', 'remote_faqkb_key': remoteFaqKbKey };
-
+    // const body = { 'question': question, 'doctype': 'normal', 'min_score': '0.0', 'remote_faqkb_key': remoteFaqKbKey };
+    const body = { 'id_faq_kb': botId, 'question': question };
     console.log('SEARCH FAQ WITH THE REMOTE FAQKB KEY - POST REQUEST BODY ', body);
 
     // tslint:disable-next-line:max-line-length

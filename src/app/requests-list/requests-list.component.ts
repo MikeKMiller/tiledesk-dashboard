@@ -20,7 +20,7 @@ import { avatarPlaceholder, getColorBck } from '../utils/util';
 import { TranslateService } from '@ngx-translate/core';
 
 import * as firebase from 'firebase/app';
-
+import { AppConfigService } from 'app/services/app-config.service';
 @Component({
   selector: 'appdashboard-requests-list',
   templateUrl: './requests-list.component.html',
@@ -38,7 +38,8 @@ export class RequestsListComponent implements OnInit {
   @ViewChild('scrollMe') private myScrollContainer: ElementRef;
   zone: NgZone;
 
-  CHAT_BASE_URL = environment.chat.CHAT_BASE_URL
+  TESTSITE_BASE_URL = environment.testsite.testsiteBaseUrl;
+  CHAT_BASE_URL = environment.chat.CHAT_BASE_URL;
   // user: Observable<User | null>;
   user: any;
   firebase_token: any;
@@ -117,6 +118,9 @@ export class RequestsListComponent implements OnInit {
   requestHasBeenArchivedNoticationMsg_part1: string;
   requestHasBeenArchivedNoticationMsg_part2: string;
   seeAll: boolean;
+
+  storageBucket: string;
+
   constructor(
     private requestsService: RequestsService,
     private elRef: ElementRef,
@@ -127,7 +131,8 @@ export class RequestsListComponent implements OnInit {
     private botLocalDbService: BotLocalDbService,
     private departmentService: DepartmentService,
     private usersService: UsersService,
-    private translate: TranslateService
+    private translate: TranslateService,
+    public appConfigService: AppConfigService
   ) {
     this.zone = new NgZone({ enableLongStackTrace: false });
 
@@ -171,6 +176,13 @@ export class RequestsListComponent implements OnInit {
     //   });
 
     // this.getCountOfRequestsforDepts();
+    this.getStorageBucket()
+  }
+
+  getStorageBucket() {
+    const firebase_conf = this.appConfigService.getConfig().firebase;
+    this.storageBucket = firebase_conf['storageBucket'];
+    console.log('STORAGE-BUCKET Requests list ', this.storageBucket)
   }
 
   // TRANSLATION
@@ -179,7 +191,7 @@ export class RequestsListComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.archivingRequestErrorNoticationMsg = text;
-        console.log('+ + + ArchivingRequestErrorNoticationMsg', text)
+        // console.log('+ + + ArchivingRequestErrorNoticationMsg', text)
       });
   }
   // TRANSLATION
@@ -188,7 +200,7 @@ export class RequestsListComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.archivingRequestNoticationMsg = text;
-        console.log('+ + + ArchivingRequestNoticationMsg', text)
+        // console.log('+ + + ArchivingRequestNoticationMsg', text)
       });
   }
 
@@ -198,7 +210,7 @@ export class RequestsListComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.requestHasBeenArchivedNoticationMsg_part1 = text;
-        console.log('+ + + RequestHasBeenArchivedNoticationMsg_part1', text)
+        // console.log('+ + + RequestHasBeenArchivedNoticationMsg_part1', text)
       });
   }
 
@@ -208,7 +220,7 @@ export class RequestsListComponent implements OnInit {
       .subscribe((text: string) => {
 
         this.requestHasBeenArchivedNoticationMsg_part2 = text;
-        console.log('+ + + RequestHasBeenArchivedNoticationMsg_part2', text)
+        // console.log('+ + + RequestHasBeenArchivedNoticationMsg_part2', text)
       });
   }
 
@@ -600,7 +612,11 @@ export class RequestsListComponent implements OnInit {
   testWidgetPage() {
     // const url = 'http://support.tiledesk.com/testsite/?projectid=' + this.projectId;
     // + '&projectname=' + this.projectName
-    const url = 'http://testwidget.tiledesk.com/testsitenw?projectid=' + this.projectId + '&prechatform=' + false + '&callout_timer=' + false + '&align=right';
+    // const url = 'http://testwidget.tiledesk.com/testsitenw3?projectname=' + this.projectName + ' &projectid=' + this.projectId
+    const url = this.TESTSITE_BASE_URL + '?tiledesk_projectid=' + this.projectId + '&project_name=' + this.projectName + '&isOpen=true'
+
+
+    // + '&prechatform=' + false + '&callout_timer=' + false + '&align=right';
     window.open(url, '_blank');
   }
 

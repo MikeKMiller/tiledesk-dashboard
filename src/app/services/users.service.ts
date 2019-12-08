@@ -22,7 +22,7 @@ import { Router } from '@angular/router';
 import { Project } from '../models/project-model';
 import { FaqKbService } from '../services/faq-kb.service';
 import { BotLocalDbService } from '../services/bot-local-db.service';
-
+import { AppConfigService } from '../services/app-config.service';
 
 interface NewUser {
   displayName: string;
@@ -44,7 +44,8 @@ export class UsersService {
 
   http: Http;
   BASE_URL = environment.mongoDbConfig.BASE_URL;
-  CLOUD_FUNC_UPDATE_USER_URL = environment.cloudFunctions.cloud_func_update_firstname_and_lastname;
+  CLOUD_FUNC_UPDATE_USER_URL: any;
+  // CLOUD_FUNC_UPDATE_USER_URL = environment.cloudFunctions.cloud_func_update_firstname_and_lastname;
   MONGODB_BASE_URL: any;
   INVITE_USER_URL: any;
   PROJECT_USER_DTLS_URL: any;
@@ -76,6 +77,7 @@ export class UsersService {
   project_id: string;
   project_name: string;
 
+  storageBucket: string;
   constructor(
     http: Http,
     // private afs: AngularFirestore,
@@ -83,7 +85,8 @@ export class UsersService {
     private usersLocalDbService: UsersLocalDbService,
     private router: Router,
     private faqKbService: FaqKbService,
-    private botLocalDbService: BotLocalDbService
+    private botLocalDbService: BotLocalDbService,
+    public appConfigService: AppConfigService
   ) {
     // this.usersCollection = this.afs.collection('users', (ref) => ref.orderBy('time', 'desc').limit(5));
     // this.searchUserCollection = this.afs.collection('users', (ref) => ref.where('displayName', '>=', 'B'));
@@ -102,7 +105,18 @@ export class UsersService {
 
     this.getCurrentProject();
 
+    // const firebase_conf = JSON.parse(appConfigService.getConfig().firebase);
+    const firebase_conf = appConfigService.getConfig().firebase;
+    console.log('nk --> UsersService firebase_conf ', firebase_conf);
+    const cloudBaseUrl = firebase_conf['chat21ApiUrl']
+    // console.log('nk --> UsersService cloudBaseUrl ',  cloudBaseUrl);
+    this.CLOUD_FUNC_UPDATE_USER_URL = cloudBaseUrl + '/api/tilechat/contacts/me';
+    console.log('nk --> UsersService cloud_func_update_firstname_and_lastname', this.CLOUD_FUNC_UPDATE_USER_URL);
+
+
   }
+
+
 
   getCurrentProject() {
     console.log('============ USER SERVICE - SUBSCRIBE TO CURRENT PROJ ============')
@@ -120,6 +134,8 @@ export class UsersService {
         this.INVITE_USER_URL = this.BASE_URL + this.project._id + '/project_users/invite';
 
         this.PENDING_INVITATION_URL = this.BASE_URL + this.project._id + '/pendinginvitations';
+
+
 
         // MAYBE NOT USED anymore
         this.PROJECT_USER_DTLS_URL = this.BASE_URL + this.project._id + '/member/';
@@ -139,17 +155,33 @@ export class UsersService {
     if (this.user) {
       this.TOKEN = this.user.token
       this.currentUserId = this.user._id
+
+      const storageBucket = this.getStorageBucket();
+      console.log('STORAGE-BUCKET Users service ', storageBucket)
       // this.getToken();
-      this.verifyUserProfileImageOnFirebaseStorage(this.currentUserId);
+
+      if (storageBucket) {
+        this.verifyUserProfileImageOnFirebaseStorage(this.currentUserId, storageBucket);
+      }
+
+
     } else {
       console.log('No user is signed in');
     }
   }
 
+  getStorageBucket() {
+    const firebase_conf = this.appConfigService.getConfig().firebase;
 
-  verifyUserProfileImageOnFirebaseStorage(user_id) {
+    // console.log('STORAGE-BUCKET Users service ', this.storageBucket)
+    return this.storageBucket = firebase_conf['storageBucket'];
+
+  }
+
+
+  verifyUserProfileImageOnFirebaseStorage(user_id, storageBucket) {
     // tslint:disable-next-line:max-line-length
-    const url = 'https://firebasestorage.googleapis.com/v0/b/chat-v2-dev.appspot.com/o/profiles%2F' + user_id + '%2Fphoto.jpg?alt=media';
+    const url = 'https://firebasestorage.googleapis.com/v0/b/' + storageBucket + '/o/profiles%2F' + user_id + '%2Fphoto.jpg?alt=media';
     const self = this;
     this.verifyImageURL(url, function (imageExists) {
 
@@ -365,7 +397,7 @@ export class UsersService {
 
   }
 
-  /// ================================== PENDING USERS ================================== ///
+  /// ================================== GET PENDING USERS ================================== ///
   public getPendingUsers(): Observable<PendingInvitation[]> {
     const url = this.PENDING_INVITATION_URL;
 
@@ -377,6 +409,20 @@ export class UsersService {
     return this.http
       .get(url, { headers })
       .map((response) => response.json());
+  }
+
+  /// ================================== GET PENDING USERS ================================== ///
+  public deletePendingInvitation(pendingInvitationId): Observable<PendingInvitation[]> {
+    const url = this.PENDING_INVITATION_URL + '/' + pendingInvitationId;
+    console.log('DELETE PENDING INVITATION URL ', url);
+    const headers = new Headers();
+    headers.append('Accept', 'application/json');
+    headers.append('Content-type', 'application/json');
+    headers.append('Authorization', this.TOKEN);
+    const options = new RequestOptions({ headers });
+    return this.http
+      .delete(url, options)
+      .map((res) => res.json());
   }
 
   /// ================================== RESEND EMAIL TO PENDING USERS ================================== ///
@@ -393,7 +439,19 @@ export class UsersService {
       .map((response) => response.json());
   }
 
-
+  /// ================================== GET PENDING USER BY ID ================================== ///
+  public getPendingUsersById(pendingInvitationId): Observable<PendingInvitation[]> {
+    // const url = this.PENDING_INVITATION_URL + '/' + pendingInvitationId;
+    const url = this.BASE_URL + 'auth/pendinginvitationsnoauth/' + pendingInvitationId;
+    console.log('GET PENDING USER BY ID URL', url);
+    const headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append('Authorization', this.TOKEN);
+    // console.log('TOKEN TO COPY ', this.TOKEN)
+    return this.http
+      .get(url, { headers })
+      .map((response) => response.json());
+  }
 
 
 

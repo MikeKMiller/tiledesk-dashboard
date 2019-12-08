@@ -15,9 +15,14 @@ import { NotifyService } from './core/notify.service';
 declare const $: any;
 
 import { environment } from '../environments/environment';
-export const firebaseConfig = environment.firebaseConfig;
+export const firebaseConfig = environment.firebase;
 import * as firebase from 'firebase';
 import 'firebase/auth';
+import { AppConfigService } from './services/app-config.service';
+import { WsRequestsService } from './services/websocket/ws-requests.service';
+import { WsMsgsService } from './services/websocket/ws-msgs.service';
+
+import { WebSocketJs } from './services/websocket/websocket-js';
 
 @Component({
     selector: 'appdashboard-root',
@@ -38,6 +43,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     @ViewChild(NavbarComponent) navbar: NavbarComponent;
 
     @ViewChild('myModal') myModal: ElementRef;
+    isPageWithNav: boolean;
 
     constructor(
         public location: Location,
@@ -45,17 +51,37 @@ export class AppComponent implements OnInit, AfterViewInit {
         private translate: TranslateService,
         private requestsService: RequestsService,
         private auth: AuthService,
-        private notify: NotifyService
-
+        private notify: NotifyService,
+        public appConfigService: AppConfigService,
+        public wsRequestsService: WsRequestsService,
+        public wsMsgsService: WsMsgsService,
+        public webSocketJs: WebSocketJs
+        
         // private faqKbService: FaqKbService,
     ) {
+
+
+        // wsRequestsService.messages.subscribe(msg => {
+        //     console.log("Response from websocket: ", msg);
+
+        // });
 
         /**
          * *** ---------------------- ***
          * *** FIREBASE initializeApp ***
          * *** ---------------------- ***
          */
-        firebase.initializeApp(firebaseConfig);
+        // firebase.initializeApp(firebaseConfig);
+
+        if (!appConfigService.getConfig().firebase || appConfigService.getConfig().firebase.apiKey === 'CHANGEIT') {
+            throw new Error('firebase config is not defined. Please create your firebase-config.json. See the Chat21-Web_widget Installation Page');
+        }
+
+        // const firebase_conf = JSON.parse(appConfigService.getConfig().firebase)
+        const firebase_conf = appConfigService.getConfig().firebase;
+        console.log('AppConfigService - AppComponent firebase_conf ', firebase_conf)
+        firebase.initializeApp(firebase_conf);
+
 
         localStorage.removeItem('firebase:previous_websocket_failure');
 
@@ -72,8 +98,8 @@ export class AppComponent implements OnInit, AfterViewInit {
             }
         }
         // this.unservedRequestCount = 0
-
     }
+
 
     switchLanguage(language: string) {
         this.translate.use(language);
@@ -82,7 +108,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     ngOnInit() {
         console.log(' ====== >>> HELLO APP.COMP (ngOnInit) <<< ====== ')
         console.log('!! FIREBASE  ', firebase);
-
+        
         this.resetRequestsIfUserIsSignedOut();
 
         // NEW (SEE ALSO )
@@ -125,8 +151,38 @@ export class AppComponent implements OnInit, AfterViewInit {
             let ps = new PerfectScrollbar(elemMainPanel);
             ps = new PerfectScrollbar(elemSidebar);
         }
-    }
 
+        this.unsetNavbarBoxShadow();
+
+        // -----------------------------------------------------------------------------------------------------
+        // Websocket connection
+        // -----------------------------------------------------------------------------------------------------
+        // this.getCurrentUserAndConnectToWs();
+    }
+    
+    getCurrentUserAndConnectToWs() {
+        const self = this
+        this.auth.user_bs.subscribe((user) => {
+          console.log('% »»» WebSocketJs WF - APP-COMPONENT - LoggedUser ', user);
+    
+          if (user && user.token) {
+    
+            const CHAT_URL = 'CHANGE_IT'
+
+            // -----------------------------------------------------------------------------------------------------
+            // Websocket init 
+            // -----------------------------------------------------------------------------------------------------
+            this.webSocketJs.init(
+                CHAT_URL,
+                undefined,
+                undefined,
+                undefined
+            );
+          }
+        });
+      }
+
+ 
     resetRequestsIfUserIsSignedOut() {
         const self = this
         console.log('resetRequestsIfUserIsSignedOut ', typeof firebase.auth)
@@ -151,8 +207,48 @@ export class AppComponent implements OnInit, AfterViewInit {
                     self.requestsService.unsubscribe()
                     self.requestsService.resetRequestsList()
                 }
+
+            // -----------------------------------------------------------------------------------------------------    
+            //  Websocket - Close websocket and reset ws requests list 
+            // -----------------------------------------------------------------------------------------------------
+            // self.closeWebsocketAndResetRequestsList()
+            
+
             }
         });
+    }
+
+
+    closeWebsocketAndResetRequestsList() {
+        this.webSocketJs.closeWebsocket()
+        this.wsRequestsService.resetWsRequestList()
+    }
+
+    // SET TO 'none' the box-shadow style of the navbar in the page in which is present the second navbar (i.e. the bottom-nav)
+    unsetNavbarBoxShadow() {
+        this.router.events.subscribe((val) => {
+            if (this.location.path() !== '') {
+                this.route = this.location.path();
+                // console.log('»> ', this.route);
+
+                // (this.route.indexOf('/analytics') !== -1) ||
+                if (
+                    (this.route.indexOf('/requests') !== -1) ||
+                    (this.route.indexOf('/users') !== -1) ||
+                    (this.route.indexOf('/groups') !== -1) ||
+                    (this.route.indexOf('/general') !== -1) ||
+                    (this.route.indexOf('/payments') !== -1) ||
+                    (this.route.indexOf('/auth') !== -1) ||
+                    (this.route.indexOf('/analytics') !== -1)
+                ) {
+
+                    const elemNavbar = <HTMLElement>document.querySelector('.navbar');
+                    // console.log('»> is analytics -- elemNavbar ', elemNavbar)
+                    elemNavbar.setAttribute('style', 'box-shadow:none');
+
+                }
+            }
+        })
     }
 
 
@@ -167,9 +263,17 @@ export class AppComponent implements OnInit, AfterViewInit {
 
         const elemNavbarToogle = <HTMLElement>document.querySelector('.navbar-toggle');
 
+        const elemSidebarWrapper = <HTMLElement>document.querySelector('.sidebar-wrapper')
 
 
-        /* DETECT IF IS THE LOGIN PAGE - SIGNUP - WELCOME - VERIFY-EMAIL */
+
+        /**
+         * DETECT IF IS THE LOGIN PAGE - SIGNUP - WELCOME - VERIFY-EMAIL - ...
+         * the path /create-project and /create-new-project they both lead to the same component (CreateProjectComponent)
+         * /create-project is called after the signup - In CreateProjectComponent is checked the current URL and if it is =
+         * to create-project is hidden ehe button 'close' that go to home (in this way the user cannot go to the home if he does
+         * not first create a project)
+         */
         this.router.events.subscribe((val) => {
             if (this.location.path() !== '') {
                 this.route = this.location.path();
@@ -178,12 +282,18 @@ export class AppComponent implements OnInit, AfterViewInit {
                 // tslint:disable-next-line:max-line-length
                 if ((this.route === '/login') ||
                     (this.route === '/signup') ||
+                    (this.route.indexOf('/signup-on-invitation') !== -1) ||
                     (this.route === '/forgotpsw') ||
                     (this.route === '/projects') ||
                     (this.route.indexOf('/verify') !== -1) ||
                     (this.route.indexOf('/resetpassword') !== -1) ||
-                    (this.route.indexOf('/pricing') !== -1)
-                    ) {
+                    (this.route.indexOf('/pricing') !== -1) ||
+                    (this.route.indexOf('/success') !== -1) ||
+                    (this.route.indexOf('/create-project') !== -1) ||
+                    (this.route.indexOf('/create-new-project') !== -1) ||
+                    (this.route.indexOf('/handle-invitation') !== -1) ||
+                    (this.route.indexOf('/install-tiledesk') !== -1)
+                ) {
 
                     elemNavbar.setAttribute('style', 'display:none;');
                     elemAppSidebar.setAttribute('style', 'display:none;');
@@ -198,14 +308,28 @@ export class AppComponent implements OnInit, AfterViewInit {
                     elemNavbar.setAttribute('style', 'display:block;');
                     elemMainPanel.setAttribute('style', 'overflow-x: hidden !important;');
                 }
+
+
+                // RESOLVE THE BUG: THE "MOBILE" SIDEBAR IN THE PAGE "RECENT PROJECT" IS SMALLER OF THE APP WINDOW
+                if (this.route === '/projects') {
+                    elemSidebarWrapper.setAttribute('style', 'height:100vh; background-color: #2d323e!important;');
+                } else {
+                    elemSidebarWrapper.setAttribute('style', 'background-color: #2d323e!important;');
+                }
+
             } else {
                 // console.log('»> * ', this.route)
             }
         });
     }
 
+
+
+
     ngAfterViewInit() {
         this.runOnRouteChange();
+        this.setPrechatFormInWidgetSettings();
+
 
         const elemFooter = <HTMLElement>document.querySelector('footer');
         // console.log('xxxx xxxx APP FOOTER ', elemFooter)
@@ -216,7 +340,18 @@ export class AppComponent implements OnInit, AfterViewInit {
                 this.route = this.location.path();
                 // console.log('»> ', this.route)
                 // tslint:disable-next-line:max-line-length
-                if ((this.route === '/login') || (this.route === '/signup') || (this.route === '/forgotpsw') || (this.route.indexOf('/resetpassword') !== -1)) {
+                if (
+                    (this.route === '/login') ||
+                    (this.route === '/signup') ||
+                    (this.route.indexOf('/signup-on-invitation') !== -1) ||
+                    (this.route === '/forgotpsw') ||
+                    (this.route.indexOf('/resetpassword') !== -1) ||
+                    (this.route.indexOf('/create-project') !== -1) ||
+                    (this.route.indexOf('/create-new-project') !== -1) ||
+                    (this.route.indexOf('/install-tiledesk') !== -1) ||
+                    (this.route.indexOf('/handle-invitation') !== -1) ||
+                    (this.route.indexOf('/chat') !== -1)
+                ) {
 
                     elemFooter.setAttribute('style', 'display:none;');
                     // console.log('DETECT LOGIN PAGE')
@@ -254,6 +389,32 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
 
+    setPrechatFormInWidgetSettings() {
+        this.router.events.subscribe((val) => {
+            if (this.location.path() !== '') {
+                this.route = this.location.path();
+                // console.log('»> ', this.route)
+                // tslint:disable-next-line:max-line-length
+                if ((this.route === '/login') || (this.route === '/signup') || (this.route === '/forgotpsw') || (this.route.indexOf('/signup-on-invitation') !== -1)) {
+
+                    this.isPageWithNav = false;
+
+                    if (window && window['tiledeskSettings']) {
+                        window['tiledeskSettings']['preChatForm'] = true
+                    }
+                } else {
+
+                    this.isPageWithNav = true;
+
+                    if (window['tiledeskSettings']['preChatForm']) {
+                        delete window['tiledeskSettings']['preChatForm'];
+                    }
+                }
+                // console.log('APP.COMP currentUrl ', this.route, 'tiledeskSettings ', window['tiledeskSettings']);
+            }
+        });
+    }
+
     isMaps(path) {
         var titlee = this.location.prepareExternalUrl(this.location.path());
         titlee = titlee.slice(1);
@@ -278,4 +439,10 @@ export class AppComponent implements OnInit, AfterViewInit {
         }
         return bool;
     }
+
+    changeOfRoutes() {
+        console.log('changeOfRoutes ')
+    }
+
+
 }
